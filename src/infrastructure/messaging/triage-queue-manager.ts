@@ -93,16 +93,16 @@ export class TriageQueueManager {
    * HUMAN REVIEW: Validar que priorityLevel sea válido antes de enviar.
    * Implementar logging/auditoría de todos los mensajes enviados.
    */
-  public async sendTriageNotification(
+  public sendTriageNotification(
     notification: TriageNotification
-  ): Promise<boolean> {
+  ): boolean {
     // Validar entrada
     if (!notification.patientId) {
       throw new Error('Patient ID is required for triage notification');
     }
 
     if (!this.isValidPriorityLevel(notification.priorityLevel)) {
-      throw new Error(`Invalid priority level: ${notification.priorityLevel}`);
+      throw new Error(`Invalid priority level: ${String(notification.priorityLevel)}`);
     }
 
     // Determinar cola según prioridad
@@ -115,7 +115,7 @@ export class TriageQueueManager {
     };
 
     try {
-      const sent = await this.rabbitMQ.sendToQueue(queueName, enrichedNotification);
+      const sent = this.rabbitMQ.sendToQueue(queueName, enrichedNotification);
 
       if (sent) {
         console.log(

@@ -62,17 +62,22 @@ export class RabbitMQConnection {
       this.connection = conn as unknown as Connection;
 
       // Manejar cierre inesperado de conexión
-      (this.connection as any).on('close', () => {
+      const connWithEvents = this.connection as unknown as {
+        on: (event: string, handler: () => void) => void;
+        createChannel: () => Promise<Channel>;
+      };
+
+      connWithEvents.on('close', () => {
         console.error('RabbitMQ connection closed. Attempting to reconnect...');
         void this.handleReconnect();
       });
 
-      (this.connection as any).on('error', (error: Error) => {
-        console.error('RabbitMQ connection error:', error);
+      connWithEvents.on('error', () => {
+        console.error('RabbitMQ connection error');
       });
 
       // Crear canal
-      this.channel = await (this.connection as any).createChannel();
+      this.channel = await connWithEvents.createChannel();
 
       // Configurar prefetch para control de flujo
       // HUMAN REVIEW: Ajustar según capacidad del servidor
@@ -102,7 +107,7 @@ export class RabbitMQConnection {
    * HUMAN REVIEW: Implementar estrategia de circuit breaker si los reintentos
    * fallan persistentemente
    */
-  private async handleReconnect(): Promise<void> {
+  private handleReconnect(): void {
     if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
       console.error('Max reconnection attempts reached. Manual intervention required.');
       return;
@@ -113,12 +118,10 @@ export class RabbitMQConnection {
 
     console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})...`);
 
-    setTimeout(async () => {
-      try {
-        await this.connect();
-      } catch (error) {
+    setTimeout(() => {
+      void this.connect().catch((error) => {
         console.error('Reconnection failed:', error);
-      }
+      });
     }, delay);
   }
 
@@ -157,7 +160,7 @@ export class RabbitMQConnection {
    *
    * HUMAN REVIEW: Implementar retry logic y dead letter queue para mensajes fallidos
    */
-  public async sendToQueue<T>(queueName: string, message: T): Promise<boolean> {
+  public sendToQueue<T>(queueName: string, message: T): boolean {
     if (!this.channel) {
       throw new Error('RabbitMQ channel not initialized. Call connect() first.');
     }
@@ -200,24 +203,26 @@ export class RabbitMQConnection {
     }
 
     try {
-      await this.channel.consume(queueName, async (msg) => {
+      await this.channel.consume(queueName, (msg) => {
         if (!msg) {
           return;
         }
 
-        try {
-          const content = JSON.parse(msg.content.toString()) as T;
-          await onMessage(content);
+        void (async (): Promise<void> => {
+          try {
+            const content = JSON.parse(msg.content.toString()) as T;
+            await onMessage(content);
 
-          // Acknowledge (ACK) el mensaje exitosamente procesado
-          this.channel?.ack(msg);
-        } catch (error) {
-          console.error(`Error processing message from '${queueName}':`, error);
+            // Acknowledge (ACK) el mensaje exitosamente procesado
+            this.channel?.ack(msg);
+          } catch (error) {
+            console.error(`Error processing message from '${queueName}':`, error);
 
-          // HUMAN REVIEW: Decidir estrategia: requeue, DLQ, o descartar
-          // Por ahora, descartamos el mensaje con NACK
-          this.channel?.nack(msg, false, false);
-        }
+            // HUMAN REVIEW: Decidir estrategia: requeue, DLQ, o descartar
+            // Por ahora, descartamos el mensaje con NACK
+            this.channel?.nack(msg, false, false);
+          }
+        })();
       });
 
       console.log(`✅ Started consuming from queue '${queueName}'`);
@@ -241,7 +246,8 @@ export class RabbitMQConnection {
       }
 
       if (this.connection) {
-        await (this.connection as any).close();
+        const connWithClose = this.connection as unknown as { close: () => Promise<void> };
+        await connWithClose.close();
         this.connection = null;
       }
 

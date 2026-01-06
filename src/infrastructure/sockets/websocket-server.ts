@@ -156,7 +156,7 @@ export class WebSocketServer {
         ? `triage:priority:${data.priorityLevel}`
         : 'triage:all';
 
-      socket.join(room);
+      void socket.join(room);
       console.log(`Client ${socket.id} subscribed to ${room}`);
 
       socket.emit('subscribe:success', { room });
@@ -168,7 +168,7 @@ export class WebSocketServer {
         ? `triage:priority:${data.priorityLevel}`
         : 'triage:all';
 
-      socket.leave(room);
+      void socket.leave(room);
       console.log(`Client ${socket.id} unsubscribed from ${room}`);
     });
 
@@ -270,16 +270,19 @@ export class WebSocketServer {
     }
 
     // Notificar a todos los clientes antes de cerrar
-    this.io.emit('server:shutdown', {
+    void this.io.emit('server:shutdown', {
       message: 'Server is shutting down',
       timestamp: Date.now(),
     });
 
     // Esperar un momento para que los mensajes se envíen
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), 1000);
+    });
 
     // Cerrar todas las conexiones
-    this.io.close();
+    // HUMAN REVIEW: Socket.io close() puede ser void o Promise dependiendo de la versión
+    void this.io.close();
 
     this.connectedClients.clear();
     this.io = null;
