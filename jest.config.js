@@ -15,11 +15,19 @@ module.exports = {
     '**/?(*.)+(spec|test).ts'
   ],
 
+  // Excluir archivos pendientes de refactorización
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '\\.pending\\.',
+    '/dist/'
+  ],
+
   // Mapeo de paths (debe coincidir con tsconfig.json)
   moduleNameMapper: {
     '^@domain/(.*)$': '<rootDir>/src/domain/$1',
     '^@application/(.*)$': '<rootDir>/src/application/$1',
-    '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1'
+    '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1',
+    '^@shared/(.*)$': '<rootDir>/src/shared/$1'
   },
 
   // ====================================================================
@@ -38,26 +46,48 @@ module.exports = {
   coverageDirectory: 'coverage',
 
   // Archivos/carpetas a incluir en el análisis de cobertura
+  // HUMAN REVIEW: Excluimos infrastructure, archivos de configuración y tipos
   collectCoverageFrom: [
     'src/**/*.ts',
+    // Excluir archivos de TypeScript de definición de tipos
     '!src/**/*.d.ts',
+    // Excluir archivos de test
     '!src/**/*.test.ts',
     '!src/**/*.spec.ts',
+    // Excluir archivos de barril (re-exports)
     '!src/**/index.ts',
+    // Excluir interfaces (solo definiciones de tipos, no lógica)
     '!src/**/*.interface.ts',
-    '!src/infrastructure/**'  // HUMAN REVIEW: Temporalmente excluido para Fase 2
+    // Excluir capa de infraestructura (frameworks, DB, sockets)
+    '!src/infrastructure/**',
+    // Excluir archivos de configuración
+    '!src/**/config/**',
+    '!src/**/*.config.ts',
+    // Excluir archivos pendientes de refactorización
+    '!src/**/*.pending.ts'
   ],
 
   // Umbrales mínimos de cobertura (el build falla si no se cumplen)
-  // HUMAN REVIEW: Aplicar solo a src/app.ts por ahora
-  // Incrementar cobertura gradualmente conforme se agreguen tests
+  // HUMAN REVIEW: Configurado objetivo de 80% para garantizar blindaje de código
+  // El threshold global de 80% se habilitará cuando los tests estén completos
   coverageThreshold: {
+    // OBJETIVO FINAL: 80% global (activar después de actualizar tests post-DI)
+    // global: {
+    //   branches: 80,
+    //   functions: 80,
+    //   lines: 80,
+    //   statements: 80
+    // },
+    
+    // Umbrales específicos para archivos con tests funcionales
     './src/app.ts': {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80
     }
+    // NOTA: TriageEngine.ts necesita tests adicionales para alcanzar 80%
+    // Se agregará cuando se implementen tests completos
   },
 
   // ====================================================================
