@@ -100,7 +100,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Comando de inicio
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/server.js"]
 
 # ====================================================================
 # NOTAS DE OPTIMIZACIÓN

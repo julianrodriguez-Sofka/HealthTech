@@ -73,7 +73,6 @@ export interface AcceptCaseData {
  */
 export class SocketServer {
   private io: SocketIOServer | null = null;
-  private httpServer: HttpServer | null = null;
   private isInitialized = false;
 
   /**
@@ -103,8 +102,6 @@ export class SocketServer {
       console.log('[SocketServer] Already initialized, skipping...');
       return;
     }
-
-    this.httpServer = httpServer;
 
     // HUMAN REVIEW: Crear instancia de Socket.io con configuración
     this.io = new SocketIOServer(httpServer, {
@@ -343,7 +340,6 @@ export class SocketServer {
     });
 
     this.io = null;
-    this.httpServer = null;
     this.isInitialized = false;
   }
 }

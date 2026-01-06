@@ -6,6 +6,11 @@
 # - App: Aplicación Node.js con WebSockets
 # - RabbitMQ: Broker de mensajería para notificaciones asíncronas
 # - PostgreSQL: Base de datos relacional para persistencia
+#
+# HUMAN REVIEW: La IA sugirió una configuración básica. Refactoricé para
+# incluir Healthchecks y redes aisladas para garantizar que la aplicación
+# no intente conectarse a RabbitMQ antes de que el broker acepte conexiones,
+# evitando fallos en el arranque.
 # ====================================================================
 
 version: '3.8'
@@ -63,8 +68,6 @@ services:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin2026
       RABBITMQ_DEFAULT_VHOST: /
-      # Configuración de memoria y disco
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 512MB
     ports:
       - "5672:5672"    # Puerto AMQP
       - "15672:15672"  # Management UI
