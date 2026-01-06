@@ -1,0 +1,62 @@
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ESNext",                          // Usa las últimas características de JavaScript
+    "lib": ["ESNext"],                           // Librerías estándar de ECMAScript más recientes
+    "module": "commonjs",                        // Sistema de módulos compatible con Node.js
+    
+    /* Module Resolution */
+    "moduleResolution": "node",                  // Resolución de módulos estilo Node.js
+    "rootDir": "./src",                          // Directorio raíz del código fuente
+    "baseUrl": "./src",                          // Base para mapeo de paths
+    "paths": {
+      "@domain/*": ["domain/*"],                 // Alias para capa de dominio
+      "@application/*": ["application/*"],       // Alias para capa de aplicación
+      "@infrastructure/*": ["infrastructure/*"]  // Alias para capa de infraestructura
+    },
+    "resolveJsonModule": true,                   // Permite importar archivos JSON
+    
+    /* Emit */
+    "outDir": "./dist",                          // Directorio de salida para archivos compilados
+    "declaration": true,                         // Genera archivos .d.ts de declaración
+    "declarationMap": true,                      // Genera sourcemaps para declaraciones
+    "sourceMap": true,                           // Genera sourcemaps para debugging
+    "removeComments": true,                      // Elimina comentarios en la compilación
+    "importHelpers": true,                       // Importa helpers de tslib (reduce tamaño)
+    
+    /* Interop Constraints */
+    "esModuleInterop": true,                     // Habilita interoperabilidad con CommonJS
+    "allowSyntheticDefaultImports": true,        // Permite imports default sintéticos
+    "forceConsistentCasingInFileNames": true,    // Fuerza consistencia en nombres de archivo
+    
+    /* Type Checking */
+    "strict": true,                              // Activa TODAS las verificaciones estrictas
+    "noImplicitAny": true,                       // Error si se infiere 'any' implícitamente
+    "strictNullChecks": true,                    // null y undefined deben manejarse explícitamente
+    "strictFunctionTypes": true,                 // Verificación estricta de tipos de funciones
+    "strictBindCallApply": true,                 // Verificación estricta de bind/call/apply
+    "strictPropertyInitialization": true,        // Propiedades de clase deben inicializarse
+    "noImplicitThis": true,                      // Error si 'this' tiene tipo implícito 'any'
+    "alwaysStrict": true,                        // Emite "use strict" en cada archivo
+    "noUnusedLocals": true,                      // Error si hay variables locales sin usar
+    "noUnusedParameters": true,                  // Error si hay parámetros sin usar
+    "noImplicitReturns": true,                   // Error si no todos los paths retornan valor
+    "noFallthroughCasesInSwitch": true,          // Error en switch sin break
+    "noUncheckedIndexedAccess": true,            // Acceso a índices puede ser undefined
+    "allowUnusedLabels": false,                  // Error si hay labels sin usar
+    "allowUnreachableCode": false,               // Error si hay código inalcanzable
+    
+    /* Completeness */
+    "skipLibCheck": true                         // Omite verificación de archivos .d.ts (performance)
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}
