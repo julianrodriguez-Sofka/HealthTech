@@ -3,6 +3,7 @@
 # ====================================================================
 # Este archivo orquesta los servicios necesarios para el sistema
 # de triaje en tiempo real:
+# - Frontend: React + Vite + Tailwind (Nginx)
 # - App: Aplicación Node.js con WebSockets
 # - RabbitMQ: Broker de mensajería para notificaciones asíncronas
 # - PostgreSQL: Base de datos relacional para persistencia
@@ -146,6 +147,34 @@ services:
     networks:
       - healthtech-network
 
+  # ==================================================================
+  # SERVICIO 4: Frontend (React + Vite + Nginx)
+  # ==================================================================
+  # Aplicación frontend con:
+  # - React 18 para UI interactiva
+  # - Tailwind CSS para diseño moderno
+  # - WebSocket client para actualizaciones en tiempo real
+  # - Nginx para servir archivos estáticos optimizados
+  # ==================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: healthtech-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"      # HTTP
+    depends_on:
+      - app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - healthtech-network
+
 # ====================================================================
 # VOLUMES: Persistencia de datos
 # ====================================================================
@@ -175,15 +204,25 @@ networks:
 #
 # Ver logs de la aplicación:
 #   docker-compose logs -f app
+#   docker-compose logs -f frontend
 #
 # Reiniciar solo la app (después de cambios):
 #   docker-compose restart app
+#
+# Rebuild del frontend:
+#   docker-compose build frontend --no-cache
+#   docker-compose up -d frontend
 #
 # Acceder a la base de datos:
 #   docker-compose exec postgres psql -U healthtech -d healthtech_triage
 #
 # Acceder a RabbitMQ Management:
 #   http://localhost:15672 (admin / admin2026)
+#
+# Acceder a la aplicación:
+#   Frontend: http://localhost
+#   API Backend: http://localhost:3000
+#   WebSocket: ws://localhost:3000
 #
 # Detener y eliminar contenedores:
 #   docker-compose down

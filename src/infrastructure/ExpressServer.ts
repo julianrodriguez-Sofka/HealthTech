@@ -326,19 +326,77 @@ class ExpressServer {
       });
     });
 
-    // GET /api/v1/patients (placeholder)
+    // GET /api/v1/patients - Obtener lista de pacientes (TEMPORAL)
+    // HUMAN REVIEW: Implementación temporal con almacenamiento en memoria
+    // Debe ser reemplazada por servicio real con base de datos
+    const patientsStore: any[] = []; // Array temporal para almacenar pacientes en memoria
+    
     this.app.get('/api/v1/patients', (_req: Request, res: Response) => {
-      res.status(501).json({
-        success: false,
-        error: {
-          code: 'NOT_IMPLEMENTED',
-          message: 'Endpoint not yet implemented',
-          details: {
-            reason: 'PatientService requires DI refactoring',
-            seeDocumentation: '/api-docs'
-          }
+      console.log(`[GET /api/v1/patients] Returning ${patientsStore.length} patients`);
+      // Frontend espera un array directo, no un objeto con success/data
+      res.status(200).json(patientsStore);
+    });
+
+    // POST /api/v1/patients - Crear nuevo paciente (TEMPORAL)
+    // HUMAN REVIEW: Implementación temporal para testing del frontend
+    // Debe ser reemplazada por el servicio real con DI cuando esté disponible
+    console.log('🔧 [DEBUG] Registering POST /api/v1/patients endpoint');
+    this.app.post('/api/v1/patients', (req: Request, res: Response) => {
+      console.log('📝 [DEBUG] POST /api/v1/patients handler called');
+      try {
+        const { name, age, gender, symptoms, vitals } = req.body;
+
+        // Validación básica
+        if (!name || !age || !gender || !vitals) {
+          res.status(400).json({
+            success: false,
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Missing required fields: name, age, gender, vitals'
+            }
+          });
+          return;
         }
-      });
+
+        // Simular creación de paciente con ID único
+        const patientId = `patient-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        
+        // Calcular prioridad simple basada en signos vitales
+        let priority = 5; // Por defecto: no urgente
+        
+        if (vitals.temperature > 39 || vitals.temperature < 36) priority = Math.min(priority, 2);
+        if (vitals.heartRate > 120 || vitals.heartRate < 50) priority = Math.min(priority, 2);
+        if (vitals.oxygenSaturation < 92) priority = Math.min(priority, 1);
+        if (vitals.respiratoryRate > 24 || vitals.respiratoryRate < 12) priority = Math.min(priority, 3);
+
+        const patient = {
+          id: patientId,
+          name,
+          age,
+          gender,
+          symptoms: symptoms || [],
+          vitals,
+          priority,
+          arrivalTime: new Date().toISOString(),
+          status: 'waiting'
+        };
+
+        // Guardar paciente en el almacén temporal
+        patientsStore.push(patient);
+        console.log(`[Patient Created] ID: ${patientId}, Priority: ${priority}, Total patients: ${patientsStore.length}`);
+
+        // Frontend espera el objeto paciente directo, no envuelto en { success, data }
+        res.status(201).json(patient);
+      } catch (error) {
+        console.error('[POST /api/v1/patients] Error:', error);
+        res.status(500).json({
+          success: false,
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Failed to create patient'
+          }
+        });
+      }
     });
 
     // GET /api/v1/triage/results/:patientId (placeholder)
