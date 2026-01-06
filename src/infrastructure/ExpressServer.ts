@@ -44,22 +44,30 @@ class ExpressServer {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
-    // CORS
+    // CORS - HUMAN REVIEW: Configuración mejorada para Docker y desarrollo
     this.app.use((req: Request, _res: Response, next: NextFunction) => {
-      _res.setHeader('Access-Control-Allow-Origin', '*');
-      _res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      _res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      const origin = req.headers.origin || '*';
+      _res.setHeader('Access-Control-Allow-Origin', origin);
+      _res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      _res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Timestamp, X-Requested-With');
+      _res.setHeader('Access-Control-Allow-Credentials', 'true');
+      _res.setHeader('Access-Control-Max-Age', '86400');
 
       if (req.method === 'OPTIONS') {
-        _res.sendStatus(200);
+        _res.sendStatus(204);
       } else {
         next();
       }
     });
 
-    // Request logging (simple)
+    // Request logging (mejorado)
     this.app.use((req: Request, _res: Response, next: NextFunction) => {
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+      const timestamp = new Date().toISOString();
+      const method = req.method;
+      const path = req.path;
+      const query = Object.keys(req.query).length > 0 ? JSON.stringify(req.query) : '';
+      
+      console.log(`[${timestamp}] ${method} ${path}${query ? ' ' + query : ''}`);
       next();
     });
   }

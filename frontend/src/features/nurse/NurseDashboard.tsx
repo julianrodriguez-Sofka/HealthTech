@@ -35,7 +35,7 @@ export function NurseDashboard() {
 
   // Filtrar solo pacientes en espera
   const waitingPatients = patients.filter(
-    (p) => p.status === 'Esperando' || p.status === 'waiting'
+    (p) => p.status === 'waiting'
   );
 
   // Aplicar búsqueda y filtros
@@ -159,7 +159,7 @@ export function NurseDashboard() {
           <Button
             variant="primary"
             leftIcon={<Plus className="w-4 h-4" />}
-            href="/nurse/quick-register"
+            onClick={() => window.location.href = '/nurse/quick-register'}
           >
             Registro Rápido
           </Button>

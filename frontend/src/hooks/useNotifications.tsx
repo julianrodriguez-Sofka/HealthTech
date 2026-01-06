@@ -16,6 +16,10 @@ export function useNotifications() {
   const { user, isAuthenticated } = useAuthContext();
 
   useEffect(() => {
+    // HUMAN REVIEW: Socket.IO deshabilitado temporalmente hasta configurar en backend
+    // TODO: Habilitar cuando el backend tenga Socket.IO configurado
+    return;
+    
     // Solo médicos reciben notificaciones críticas
     if (!isAuthenticated || user?.role !== UserRole.DOCTOR) {
       return;
