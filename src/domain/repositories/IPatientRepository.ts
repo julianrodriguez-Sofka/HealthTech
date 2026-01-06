@@ -1,9 +1,9 @@
 /**
  * Patient Repository Interface - Domain Layer
- * 
+ *
  * Define el contrato para persistencia de pacientes.
  * Esta interfaz pertenece al dominio (Dependency Inversion Principle).
- * 
+ *
  * HUMAN REVIEW: La implementación concreta estará en infrastructure/persistence/
  * permitiendo cambiar de base de datos sin modificar la lógica de negocio.
  */
@@ -30,7 +30,7 @@ export interface PatientData {
 export interface IPatientRepository {
   /**
    * Guarda un paciente en el sistema
-   * 
+   *
    * @param patient - Datos del paciente a guardar
    * @returns Result con el paciente guardado o error
    */
@@ -38,7 +38,7 @@ export interface IPatientRepository {
 
   /**
    * Busca un paciente por su ID
-   * 
+   *
    * @param id - ID del paciente
    * @returns Result con el paciente encontrado o null
    */
@@ -46,7 +46,7 @@ export interface IPatientRepository {
 
   /**
    * Busca un paciente por su documento de identidad
-   * 
+   *
    * @param documentId - Documento de identidad
    * @returns Result con el paciente encontrado o null
    */
@@ -54,7 +54,7 @@ export interface IPatientRepository {
 
   /**
    * Lista todos los pacientes (para admin/búsqueda)
-   * 
+   *
    * @param limit - Límite de resultados
    * @param offset - Offset para paginación
    * @returns Result con array de pacientes

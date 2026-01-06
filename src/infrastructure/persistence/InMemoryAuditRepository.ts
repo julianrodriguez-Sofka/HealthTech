@@ -1,6 +1,6 @@
 /**
  * In-Memory Audit Repository - Infrastructure Layer
- * 
+ *
  * Implementación en memoria del repositorio de auditoría.
  */
 
@@ -15,19 +15,19 @@ export class InMemoryAuditRepository implements IAuditRepository {
 
   async save(auditLog: AuditLogData): Promise<Result<AuditLogData, Error>> {
     this.logs.set(auditLog.id, { ...auditLog });
-    
+
     // HUMAN REVIEW: Indexar por usuario
     const userLogs = this.userIndex.get(auditLog.userId) || [];
     userLogs.push(auditLog.id);
     this.userIndex.set(auditLog.userId, userLogs);
-    
+
     // HUMAN REVIEW: Indexar por paciente si existe
     if (auditLog.patientId) {
       const patientLogs = this.patientIndex.get(auditLog.patientId) || [];
       patientLogs.push(auditLog.id);
       this.patientIndex.set(auditLog.patientId, patientLogs);
     }
-    
+
     // HUMAN REVIEW: Indexar por acción
     const actionLogs = this.actionIndex.get(auditLog.action) || [];
     actionLogs.push(auditLog.id);

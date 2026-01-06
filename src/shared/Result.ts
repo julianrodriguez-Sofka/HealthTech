@@ -1,13 +1,13 @@
 /**
  * Result Pattern Implementation
- * 
+ *
  * Implementa el patrón Result para manejo funcional de errores
  * sin usar excepciones. Permite composición y encadenamiento
  * de operaciones que pueden fallar.
- * 
+ *
  * HUMAN REVIEW: Este patrón reemplaza try/catch para errores esperados,
  * mejorando el control de flujo y la legibilidad del código.
- * 
+ *
  * @example
  * ```typescript
  * function divide(a: number, b: number): Result<number, Error> {
@@ -16,7 +16,7 @@
  *   }
  *   return Result.ok(a / b);
  * }
- * 
+ *
  * const result = divide(10, 2);
  * if (result.isSuccess) {
  *   console.log(result.value); // 5
@@ -66,14 +66,14 @@ export class Result<T, E = Error> {
 
   /**
    * Combina múltiples Results. Si alguno falla, retorna el primer error
-   * 
+   *
    * HUMAN REVIEW: Útil para validaciones en secuencia donde todas
    * deben pasar para continuar
    */
   public static combine<T = void>(results: Result<unknown, Error>[]): Result<T, Error> {
     for (const result of results) {
       if (result.isFailure) {
-        return Result.fail(result.error!) as Result<T, Error>;
+        return Result.fail(result.error);
       }
     }
     return Result.ok(undefined as T);
@@ -81,7 +81,7 @@ export class Result<T, E = Error> {
 
   /**
    * Obtiene el valor. Lanza error si Result es failure
-   * 
+   *
    * HUMAN REVIEW: Usar solo cuando estés 100% seguro que es success
    */
   public get value(): T {
@@ -110,7 +110,7 @@ export class Result<T, E = Error> {
 
   /**
    * Mapea el valor si es success, propaga el error si es failure
-   * 
+   *
    * HUMAN REVIEW: Permite transformar el valor sin romper la cadena de Results
    */
   public map<U>(fn: (value: T) => U): Result<U, E> {
@@ -122,7 +122,7 @@ export class Result<T, E = Error> {
 
   /**
    * Mapea el valor a otro Result (flatMap/bind)
-   * 
+   *
    * HUMAN REVIEW: Útil para encadenar operaciones que pueden fallar
    */
   public flatMap<U>(fn: (value: T) => Result<U, E>): Result<U, E> {
@@ -164,7 +164,7 @@ export class Result<T, E = Error> {
 
   /**
    * Pattern matching sobre Result
-   * 
+   *
    * HUMAN REVIEW: API funcional para manejar ambos casos
    */
   public match<U>(patterns: {
@@ -189,7 +189,7 @@ export class Result<T, E = Error> {
 
   /**
    * Crea un Result desde una Promise
-   * 
+   *
    * HUMAN REVIEW: Útil para wrappear llamadas async que pueden fallar
    */
   public static async fromPromise<T, E = Error>(

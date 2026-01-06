@@ -1,9 +1,9 @@
 /**
  * In-Memory Patient Repository - Infrastructure Layer
- * 
+ *
  * Implementación en memoria del repositorio de pacientes.
  * Útil para desarrollo, testing y como fallback.
- * 
+ *
  * HUMAN REVIEW: Esta es una implementación temporal. En producción,
  * reemplazar con PostgresPatientRepository que persista en base de datos real.
  */
@@ -29,7 +29,7 @@ export class InMemoryPatientRepository implements IPatientRepository {
 
     // HUMAN REVIEW: Guardar paciente
     this.patients.set(patient.id, { ...patient });
-    
+
     if (patient.documentId) {
       this.documentIndex.set(patient.documentId, patient.id);
     }
@@ -57,7 +57,7 @@ export class InMemoryPatientRepository implements IPatientRepository {
     const start = offset || 0;
     const end = limit ? start + limit : allPatients.length;
     const paginatedPatients = allPatients.slice(start, end);
-    
+
     return Result.ok(paginatedPatients.map(p => ({ ...p })));
   }
 

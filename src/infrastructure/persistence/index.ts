@@ -1,6 +1,6 @@
 /**
  * Infrastructure Persistence - Barrel Export
- * 
+ *
  * Exporta todas las implementaciones de repositorios e infraestructura de persistencia.
  */
 

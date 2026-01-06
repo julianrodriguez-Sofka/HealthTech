@@ -1,11 +1,11 @@
 import { Result } from '@shared/Result';
 import type { IVitalsRepository, IPatientRepository } from '@domain/repositories';
 import type { IIdGenerator } from '@application/interfaces';
-import { 
-  VitalsValidationError, 
-  PhysiologicalLimitExceededError, 
+import {
+  VitalsValidationError,
+  PhysiologicalLimitExceededError,
   MissingVitalsError,
-  PatientNotFoundError 
+  PatientNotFoundError
 } from '@domain/errors';
 
 /**
@@ -218,7 +218,7 @@ export class VitalsService {
    */
   private validateVitalsRanges(vitals: IVitals): Result<void, VitalsValidationError | PhysiologicalLimitExceededError> {
     // HUMAN REVIEW: Validación 1 - Ningún valor puede ser negativo
-    if (vitals.heartRate < 0 || vitals.temperature < 0 || 
+    if (vitals.heartRate < 0 || vitals.temperature < 0 ||
         vitals.oxygenSaturation < 0 || vitals.systolicBP < 0) {
       return Result.fail(new VitalsValidationError('all', 'NEGATIVE_VALUES', 'Los signos vitales no pueden ser negativos'));
     }
@@ -226,8 +226,8 @@ export class VitalsService {
     // HUMAN REVIEW: Validación 2 - Rangos fisiológicos extremos
     if (vitals.heartRate > this.PHYSIOLOGICAL_LIMITS.heartRate.max) {
       return Result.fail(new PhysiologicalLimitExceededError(
-        'heartRate', 
-        vitals.heartRate, 
+        'heartRate',
+        vitals.heartRate,
         this.PHYSIOLOGICAL_LIMITS.heartRate.min,
         this.PHYSIOLOGICAL_LIMITS.heartRate.max
       ));
@@ -235,8 +235,8 @@ export class VitalsService {
 
     if (vitals.temperature > this.PHYSIOLOGICAL_LIMITS.temperature.max) {
       return Result.fail(new PhysiologicalLimitExceededError(
-        'temperature', 
-        vitals.temperature, 
+        'temperature',
+        vitals.temperature,
         this.PHYSIOLOGICAL_LIMITS.temperature.min,
         this.PHYSIOLOGICAL_LIMITS.temperature.max
       ));
@@ -245,8 +245,8 @@ export class VitalsService {
     // HUMAN REVIEW: Validación crítica - Saturación de oxígeno no puede exceder 100%
     if (vitals.oxygenSaturation > this.PHYSIOLOGICAL_LIMITS.oxygenSaturation.max) {
       return Result.fail(new PhysiologicalLimitExceededError(
-        'oxygenSaturation', 
-        vitals.oxygenSaturation, 
+        'oxygenSaturation',
+        vitals.oxygenSaturation,
         this.PHYSIOLOGICAL_LIMITS.oxygenSaturation.min,
         this.PHYSIOLOGICAL_LIMITS.oxygenSaturation.max
       ));
@@ -254,8 +254,8 @@ export class VitalsService {
 
     if (vitals.systolicBP > this.PHYSIOLOGICAL_LIMITS.systolicBP.max) {
       return Result.fail(new PhysiologicalLimitExceededError(
-        'systolicBP', 
-        vitals.systolicBP, 
+        'systolicBP',
+        vitals.systolicBP,
         this.PHYSIOLOGICAL_LIMITS.systolicBP.min,
         this.PHYSIOLOGICAL_LIMITS.systolicBP.max
       ));

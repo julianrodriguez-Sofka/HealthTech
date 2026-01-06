@@ -1,8 +1,8 @@
 import { Result } from '@shared/Result';
 import type { IAuditRepository, AuditLogData, AuditSearchCriteria } from '@domain/repositories';
 import type { IIdGenerator } from '@application/interfaces';
-import { 
-  InvalidNotificationDataError 
+import {
+  InvalidNotificationDataError
 } from '@domain/errors';
 
 /**
@@ -95,7 +95,7 @@ export class AuditService {
    * Ejemplo de uso:
    * ```typescript
    * const priority = triageEngine.calculatePriority(vitals);
-   * 
+   *
    * // Fire-and-forget (no esperar por el log)
    * void auditService.logAction({
    *   userId: currentUser.id,
@@ -103,7 +103,7 @@ export class AuditService {
    *   patientId: patient.id,
    *   details: `Priority ${priority} assigned`
    * });
-   * 
+   *
    * return priority; // Flujo principal no bloqueado
    * ```
    */
@@ -207,12 +207,12 @@ export class AuditService {
 
     const auditResults = results.map((result) => {
       if (result.status === 'fulfilled' && result.value.isSuccess) {
-        return result.value.value!;
+        return result.value.value;
       } else {
         return {
           success: false,
-          error: result.status === 'rejected' 
-            ? String(result.reason) 
+          error: result.status === 'rejected'
+            ? String(result.reason)
             : 'Unknown error'
         };
       }
@@ -278,7 +278,7 @@ export class AuditService {
   public getStatistics(): {
     totalActions: number;
     availableActions: string[];
-  } {
+    } {
     return {
       totalActions: Object.keys(AuditAction).length,
       availableActions: Object.values(AuditAction)

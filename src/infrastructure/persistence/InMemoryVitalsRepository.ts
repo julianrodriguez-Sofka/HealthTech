@@ -1,6 +1,6 @@
 /**
  * In-Memory Vitals Repository - Infrastructure Layer
- * 
+ *
  * Implementación en memoria del repositorio de signos vitales.
  */
 
@@ -14,7 +14,7 @@ export class InMemoryVitalsRepository implements IVitalsRepository {
 
   async save(vitals: VitalsData): Promise<Result<VitalsData, PatientNotFoundForVitalsError>> {
     this.vitals.set(vitals.id, { ...vitals });
-    
+
     const patientVitals = this.patientIndex.get(vitals.patientId) || [];
     patientVitals.push(vitals.id);
     this.patientIndex.set(vitals.patientId, patientVitals);
@@ -27,7 +27,7 @@ export class InMemoryVitalsRepository implements IVitalsRepository {
     const patientVitals = vitalsIds
       .map(id => this.vitals.get(id)!)
       .filter(v => v !== undefined);
-    
+
     return Result.ok(patientVitals.map(v => ({ ...v })));
   }
 
@@ -41,9 +41,9 @@ export class InMemoryVitalsRepository implements IVitalsRepository {
     if (!latestId) {
       return Result.ok(null);
     }
-    
+
     const latest = this.vitals.get(latestId);
-    
+
     return Result.ok(latest ? { ...latest } : null);
   }
 
@@ -56,7 +56,7 @@ export class InMemoryVitalsRepository implements IVitalsRepository {
     const filtered = vitalsIds
       .map(id => this.vitals.get(id)!)
       .filter(v => v && v.recordedAt >= startDate && v.recordedAt <= endDate);
-    
+
     return Result.ok(filtered.map(v => ({ ...v })));
   }
 

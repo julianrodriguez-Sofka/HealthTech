@@ -1,8 +1,8 @@
 /**
  * Vitals Repository Interface - Domain Layer
- * 
+ *
  * Define el contrato para persistencia de signos vitales.
- * 
+ *
  * HUMAN REVIEW: Permite implementar diferentes estrategias de almacenamiento
  * (SQL, NoSQL, in-memory) sin afectar la lógica de negocio.
  */
@@ -31,7 +31,7 @@ export interface VitalsData {
 export interface IVitalsRepository {
   /**
    * Guarda signos vitales de un paciente
-   * 
+   *
    * @param vitals - Datos de signos vitales a guardar
    * @returns Result con los signos vitales guardados o error
    */
@@ -39,7 +39,7 @@ export interface IVitalsRepository {
 
   /**
    * Busca todos los signos vitales de un paciente
-   * 
+   *
    * @param patientId - ID del paciente
    * @returns Result con array de signos vitales
    */
@@ -47,7 +47,7 @@ export interface IVitalsRepository {
 
   /**
    * Busca el registro más reciente de signos vitales de un paciente
-   * 
+   *
    * @param patientId - ID del paciente
    * @returns Result con los signos vitales más recientes o null
    */
@@ -55,7 +55,7 @@ export interface IVitalsRepository {
 
   /**
    * Busca signos vitales en un rango de fechas
-   * 
+   *
    * @param patientId - ID del paciente
    * @param startDate - Fecha inicial
    * @param endDate - Fecha final

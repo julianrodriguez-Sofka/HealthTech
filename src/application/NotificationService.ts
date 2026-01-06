@@ -1,10 +1,10 @@
 import { Result } from '@shared/Result';
 import type { IMessagingService } from '@application/interfaces';
 import type { IIdGenerator } from '@application/interfaces';
-import { 
-  NotificationSendError, 
-  MessagingServiceUnavailableError, 
-  InvalidNotificationDataError 
+import {
+  NotificationSendError,
+  MessagingServiceUnavailableError,
+  InvalidNotificationDataError
 } from '@domain/errors';
 
 /**
@@ -195,7 +195,7 @@ export class NotificationService {
   public getStatistics(): {
     highPriorityLevels: number[];
     queueName: string;
-  } {
+    } {
     return {
       highPriorityLevels: [...this.HIGH_PRIORITY_LEVELS],
       queueName: this.HIGH_PRIORITY_QUEUE

@@ -1,6 +1,6 @@
 /**
  * Domain Errors - Barrel Export
- * 
+ *
  * HUMAN REVIEW: Centralizar exports de errores para facilitar imports
  * en otras capas de la aplicación.
  */

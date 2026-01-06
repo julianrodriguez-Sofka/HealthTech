@@ -1,8 +1,8 @@
 /**
  * Triage Domain Errors
- * 
+ *
  * Excepciones personalizadas para el cálculo de triaje.
- * 
+ *
  * HUMAN REVIEW: Estas excepciones son críticas ya que afectan
  * la asignación de prioridad a pacientes. Deben ser monitoreadas
  * y alertadas en tiempo real.
@@ -21,7 +21,7 @@ export class InsufficientDataForTriageError extends Error {
     );
     this.name = 'InsufficientDataForTriageError';
     this.missingData = missingData;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, InsufficientDataForTriageError);
     }
@@ -37,7 +37,7 @@ export class InvalidVitalsForTriageError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'InvalidVitalsForTriageError';
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, InvalidVitalsForTriageError);
     }
@@ -53,7 +53,7 @@ export class TriageCalculationError extends Error {
   constructor(message: string, public readonly cause?: Error) {
     super(message);
     this.name = 'TriageCalculationError';
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, TriageCalculationError);
     }

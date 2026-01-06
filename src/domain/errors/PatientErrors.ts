@@ -1,10 +1,10 @@
 /**
  * Patient Domain Errors
- * 
+ *
  * Excepciones personalizadas para el dominio de pacientes.
  * Implementan códigos de error estructurados para mejor manejo
  * y trazabilidad en logs.
- * 
+ *
  * HUMAN REVIEW: Estas excepciones reemplazan los Error genéricos
  * para permitir manejo específico de errores de negocio.
  */
@@ -21,7 +21,7 @@ export class PatientValidationError extends Error {
     this.name = 'PatientValidationError';
     this.field = field;
     this.code = code;
-    
+
     // Mantener stack trace correcto
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, PatientValidationError);
@@ -40,7 +40,7 @@ export class PatientNotFoundError extends Error {
     super(`Patient with ID ${patientId} not found`);
     this.name = 'PatientNotFoundError';
     this.patientId = patientId;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, PatientNotFoundError);
     }
@@ -58,7 +58,7 @@ export class DuplicatePatientError extends Error {
     super(`Patient with document ID ${documentId} already exists`);
     this.name = 'DuplicatePatientError';
     this.documentId = documentId;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, DuplicatePatientError);
     }
@@ -76,7 +76,7 @@ export class InvalidAgeError extends Error {
     super(message);
     this.name = 'InvalidAgeError';
     this.birthDate = birthDate;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, InvalidAgeError);
     }

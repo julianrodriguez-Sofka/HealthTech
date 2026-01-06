@@ -1,0 +1,110 @@
+# ===================================================================
+# Health Check & Monitoring Endpoints
+# ===================================================================
+# Endpoints para monitoreo del estado del sistema y sus dependencias
+# ===================================================================
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check del sistema
+      description: |
+        Verifica el estado de salud del sistema y sus dependencias.
+        
+        **Servicios monitoreados:**
+        - Base de datos (PostgreSQL)
+        - RabbitMQ (Sistema de mensajería)
+        - Socket.IO (WebSocket server)
+        
+        **Estados posibles:**
+        - `healthy`: Todos los servicios operativos
+        - `degraded`: Algunos servicios con problemas
+        - `unhealthy`: Sistema no disponible
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Sistema saludable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              examples:
+                allServicesUp:
+                  summary: Todos los servicios operativos
+                  value:
+                    status: "healthy"
+                    timestamp: 1704537000000
+                    services:
+                      database: "up"
+                      rabbitmq: "up"
+                      socketio: "up"
+                    version: "1.0.0"
+                
+                degraded:
+                  summary: Sistema degradado (RabbitMQ caído)
+                  value:
+                    status: "degraded"
+                    timestamp: 1704537000000
+                    services:
+                      database: "up"
+                      rabbitmq: "down"
+                      socketio: "up"
+                    version: "1.0.0"
+        
+        '503':
+          description: Sistema no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: "unhealthy"
+                timestamp: 1704537000000
+                services:
+                  database: "down"
+                  rabbitmq: "down"
+                  socketio: "down"
+                version: "1.0.0"
+
+  /api/v1/info:
+    get:
+      tags:
+        - Health
+      summary: Información de la API
+      description: Devuelve información general sobre la API y su versión
+      operationId: apiInfo
+      responses:
+        '200':
+          description: Información de la API
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "HealthTech Triage API"
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  environment:
+                    type: string
+                    enum: ['development', 'staging', 'production']
+                    example: "development"
+                  nodeVersion:
+                    type: string
+                    example: "20.19.5"
+                  uptime:
+                    type: integer
+                    description: Tiempo de actividad en segundos
+                    example: 3600
+                  architecture:
+                    type: string
+                    example: "Clean Architecture"
+                  patterns:
+                    type: array
+                    items:
+                      type: string
+                    example: ["Result Pattern", "Dependency Injection", "Repository Pattern", "Observer Pattern"]

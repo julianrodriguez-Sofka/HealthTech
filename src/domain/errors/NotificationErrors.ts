@@ -1,8 +1,8 @@
 /**
  * Notification Domain Errors
- * 
+ *
  * Excepciones personalizadas para el sistema de notificaciones.
- * 
+ *
  * HUMAN REVIEW: Estos errores no deben bloquear el flujo principal
  * de triaje, pero deben ser registrados para garantizar que el personal
  * médico reciba las notificaciones críticas.
@@ -19,7 +19,7 @@ export class NotificationSendError extends Error {
     super(`Failed to send ${notificationType} notification: ${message}`);
     this.name = 'NotificationSendError';
     this.notificationType = notificationType;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, NotificationSendError);
     }
@@ -35,7 +35,7 @@ export class MessagingServiceUnavailableError extends Error {
   constructor(message: string) {
     super(`Messaging service unavailable: ${message}`);
     this.name = 'MessagingServiceUnavailableError';
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, MessagingServiceUnavailableError);
     }
@@ -51,13 +51,13 @@ export class InvalidNotificationDataError extends Error {
 
   constructor(messageOrFields: string | string[]) {
     const fields = Array.isArray(messageOrFields) ? messageOrFields : [messageOrFields];
-    super(Array.isArray(messageOrFields) 
+    super(Array.isArray(messageOrFields)
       ? `Invalid notification data: Missing fields: ${messageOrFields.join(', ')}`
       : messageOrFields
     );
     this.name = 'InvalidNotificationDataError';
     this.missingFields = fields;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, InvalidNotificationDataError);
     }

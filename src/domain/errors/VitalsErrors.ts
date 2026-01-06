@@ -1,9 +1,9 @@
 /**
  * Vitals Domain Errors
- * 
+ *
  * Excepciones personalizadas para el dominio de signos vitales.
  * Incluyen validaciones fisiológicas y detección de valores críticos.
- * 
+ *
  * HUMAN REVIEW: Estas excepciones permiten distinguir entre
  * errores de validación y valores críticos que requieren atención médica.
  */
@@ -22,7 +22,7 @@ export class VitalsValidationError extends Error {
     this.field = field;
     this.code = code;
     this.value = value;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, VitalsValidationError);
     }
@@ -49,7 +49,7 @@ export class PhysiologicalLimitExceededError extends Error {
     this.value = value;
     this.min = min;
     this.max = max;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, PhysiologicalLimitExceededError);
     }
@@ -65,13 +65,13 @@ export class MissingVitalsError extends Error {
 
   constructor(messageOrFields: string | string[]) {
     const fields = Array.isArray(messageOrFields) ? messageOrFields : [messageOrFields];
-    super(Array.isArray(messageOrFields) 
+    super(Array.isArray(messageOrFields)
       ? `Missing required vital signs: ${messageOrFields.join(', ')}`
       : messageOrFields
     );
     this.name = 'MissingVitalsError';
     this.missingFields = fields;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, MissingVitalsError);
     }
@@ -89,7 +89,7 @@ export class PatientNotFoundForVitalsError extends Error {
     super(`Cannot record vitals: Patient with ID ${patientId} not found`);
     this.name = 'PatientNotFoundForVitalsError';
     this.patientId = patientId;
-    
+
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, PatientNotFoundForVitalsError);
     }

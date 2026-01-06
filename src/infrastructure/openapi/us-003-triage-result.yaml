@@ -1,0 +1,355 @@
+# ===================================================================
+# US-003: Resultado de Triaje
+# ===================================================================
+# Historia de Usuario:
+# Como profesional de la salud
+# Quiero visualizar el resultado del triaje calculado automáticamente
+# Para tomar decisiones de atención médica basadas en la prioridad
+#
+# Criterios de Aceptación:
+# - El sistema debe calcular automáticamente la prioridad (1-5)
+# - Debe mostrar justificación clínica de la decisión
+# - Debe indicar tiempo máximo de espera según prioridad
+# - Debe enviar notificación si es prioridad 1 o 2
+# - Debe registrar auditoría completa del proceso
+# ===================================================================
+
+paths:
+  /api/v1/triage/process:
+    post:
+      tags:
+        - Triage
+      summary: Procesar triaje completo de un paciente (US-003)
+      description: |
+        Ejecuta el flujo completo de triaje desde el registro del paciente
+        hasta la asignación de prioridad y notificación.
+        
+        **Flujo de ejecución:**
+        1. Registra al paciente (si no existe)
+        2. Valida y registra signos vitales
+        3. Calcula prioridad de triaje usando el motor de reglas
+        4. Envía notificación si es prioridad 1 o 2
+        5. Registra auditoría completa
+        
+        **Sistema de Prioridades:**
+        
+        | Nivel | Descripción | Color | Tiempo Máximo | Criterios |
+        |-------|-------------|-------|---------------|-----------|
+        | 1 | Crítico/Resucitación | Rojo | Inmediato | FC>120, T>40°C, SpO2<90% |
+        | 2 | Emergencia | Naranja | < 10 min | Valores moderadamente críticos |
+        | 3 | Urgente | Amarillo | < 30 min | Valores anormales sin riesgo vital |
+        | 4 | Menos urgente | Verde | < 60 min | Valores límite de normalidad |
+        | 5 | No urgente | Azul | < 120 min | Todos los valores normales |
+        
+        **Notificaciones automáticas:**
+        - Prioridad 1 y 2: Se envía notificación inmediata a RabbitMQ
+        - Prioridad 3-5: No se envía notificación automática
+      
+      operationId: processTriage
+      requestBody:
+        required: true
+        description: Datos completos para procesamiento de triaje
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ['patient', 'vitals']
+              properties:
+                patient:
+                  type: object
+                  required: ['nombre', 'apellido', 'fechaNacimiento', 'genero']
+                  properties:
+                    nombre:
+                      type: string
+                      minLength: 2
+                      maxLength: 50
+                      description: Nombre(s) del paciente
+                      example: "Juan"
+                    apellido:
+                      type: string
+                      minLength: 2
+                      maxLength: 50
+                      description: Apellido(s) del paciente
+                      example: "Pérez García"
+                    fechaNacimiento:
+                      type: string
+                      format: date
+                      description: Fecha de nacimiento (YYYY-MM-DD)
+                      example: "1985-05-20"
+                    genero:
+                      type: string
+                      enum: ['male', 'female', 'other']
+                      description: Género del paciente
+                      example: "male"
+                    documentoIdentidad:
+                      type: string
+                      description: Documento de identidad (opcional)
+                      example: "12345678-9"
+                
+                vitals:
+                  type: object
+                  required: ['heartRate', 'temperature', 'oxygenSaturation', 'systolicBP']
+                  properties:
+                    heartRate:
+                      type: integer
+                      minimum: 0
+                      maximum: 300
+                      description: Frecuencia cardíaca (bpm)
+                      example: 75
+                    temperature:
+                      type: number
+                      format: float
+                      minimum: 0
+                      maximum: 45
+                      description: Temperatura corporal (°C)
+                      example: 36.8
+                    oxygenSaturation:
+                      type: integer
+                      minimum: 0
+                      maximum: 100
+                      description: Saturación de oxígeno (%)
+                      example: 98
+                    systolicBP:
+                      type: integer
+                      minimum: 0
+                      maximum: 300
+                      description: Presión arterial sistólica (mmHg)
+                      example: 120
+                
+                userId:
+                  type: string
+                  format: uuid
+                  description: ID del usuario que realiza el triaje (para auditoría)
+                  example: "880e8400-e29b-41d4-a716-446655440003"
+                
+                reason:
+                  type: string
+                  maxLength: 500
+                  description: Motivo de consulta
+                  example: "Dolor abdominal agudo"
+                
+                observations:
+                  type: string
+                  maxLength: 1000
+                  description: Observaciones adicionales
+                  example: "Paciente consciente, orientado en tiempo y espacio"
+            
+            examples:
+              priorityLevel1:
+                summary: Caso Crítico - Prioridad 1
+                description: Paciente con hipoxemia severa y taquicardia (requiere atención inmediata)
+                value:
+                  patient:
+                    nombre: "María"
+                    apellido: "González"
+                    fechaNacimiento: "1990-03-15"
+                    genero: "female"
+                    documentoIdentidad: "98765432-1"
+                  vitals:
+                    heartRate: 135
+                    temperature: 41.2
+                    oxygenSaturation: 85
+                    systolicBP: 185
+                  userId: "880e8400-e29b-41d4-a716-446655440003"
+                  reason: "Dificultad respiratoria severa"
+                  observations: "Paciente con cianosis distal, taquipnea"
+              
+              priorityLevel3:
+                summary: Caso Urgente - Prioridad 3
+                description: Paciente con fiebre moderada (atención en < 30 min)
+                value:
+                  patient:
+                    nombre: "Carlos"
+                    apellido: "Rodríguez"
+                    fechaNacimiento: "1975-08-22"
+                    genero: "male"
+                  vitals:
+                    heartRate: 92
+                    temperature: 38.5
+                    oxygenSaturation: 96
+                    systolicBP: 135
+                  reason: "Fiebre y malestar general"
+              
+              priorityLevel5:
+                summary: Caso No Urgente - Prioridad 5
+                description: Paciente con signos vitales normales
+                value:
+                  patient:
+                    nombre: "Ana"
+                    apellido: "Martínez"
+                    fechaNacimiento: "1995-12-10"
+                    genero: "female"
+                  vitals:
+                    heartRate: 72
+                    temperature: 36.7
+                    oxygenSaturation: 99
+                    systolicBP: 118
+                  reason: "Consulta de control"
+      
+      responses:
+        '200':
+          description: Triaje procesado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriageResult'
+              examples:
+                criticalCase:
+                  summary: Resultado - Prioridad 1 (Crítico)
+                  value:
+                    success: true
+                    patient:
+                      id: "550e8400-e29b-41d4-a716-446655440000"
+                      firstName: "María"
+                      lastName: "González"
+                      birthDate: "1990-03-15"
+                      age: 35
+                      gender: "female"
+                      documentId: "98765432-1"
+                      registeredAt: "2026-01-06T10:25:00Z"
+                    vitals:
+                      id: "660e8400-e29b-41d4-a716-446655440001"
+                      patientId: "550e8400-e29b-41d4-a716-446655440000"
+                      heartRate: 135
+                      temperature: 41.2
+                      oxygenSaturation: 85
+                      systolicBP: 185
+                      recordedAt: "2026-01-06T10:26:00Z"
+                      isAbnormal: true
+                      isCritical: true
+                    priority:
+                      level: 1
+                      description: "Crítico/Resucitación"
+                      color: "red"
+                      maxWaitTime: 0
+                      justification: "Hipoxemia severa (SpO2 < 90%) detectada. Taquicardia extrema (FC > 130 bpm). Requiere evaluación y tratamiento inmediato."
+                    notificationSent: true
+                    auditLogId: "770e8400-e29b-41d4-a716-446655440002"
+                    timestamp: 1704537000000
+                
+                normalCase:
+                  summary: Resultado - Prioridad 5 (No urgente)
+                  value:
+                    success: true
+                    patient:
+                      id: "550e8400-e29b-41d4-a716-446655440010"
+                      firstName: "Ana"
+                      lastName: "Martínez"
+                      birthDate: "1995-12-10"
+                      age: 30
+                      gender: "female"
+                      registeredAt: "2026-01-06T11:00:00Z"
+                    vitals:
+                      id: "660e8400-e29b-41d4-a716-446655440011"
+                      patientId: "550e8400-e29b-41d4-a716-446655440010"
+                      heartRate: 72
+                      temperature: 36.7
+                      oxygenSaturation: 99
+                      systolicBP: 118
+                      recordedAt: "2026-01-06T11:01:00Z"
+                      isAbnormal: false
+                      isCritical: false
+                    priority:
+                      level: 5
+                      description: "No urgente"
+                      color: "blue"
+                      maxWaitTime: 120
+                      justification: "Todos los signos vitales dentro de rangos normales. Sin criterios de urgencia o emergencia."
+                    notificationSent: false
+                    auditLogId: "770e8400-e29b-41d4-a716-446655440012"
+                    timestamp: 1704537060000
+        
+        '400':
+          $ref: '#/components/responses/BadRequest'
+          description: |
+            Errores posibles:
+            - PATIENT_VALIDATION_ERROR: Datos del paciente inválidos
+            - INVALID_AGE: Edad fuera de rango permitido
+            - VITALS_VALIDATION_ERROR: Signos vitales inválidos
+            - DUPLICATE_PATIENT: Paciente ya registrado
+        
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/triage/priority/{level}:
+    get:
+      tags:
+        - Results
+      summary: Obtener información de un nivel de prioridad
+      description: |
+        Devuelve la información detallada de un nivel de prioridad específico
+        incluyendo descripción, color y tiempo máximo de espera.
+      operationId: getPriorityInfo
+      parameters:
+        - name: level
+          in: path
+          required: true
+          description: Nivel de prioridad (1-5)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+            example: 3
+      
+      responses:
+        '200':
+          description: Información de prioridad recuperada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/TriagePriority'
+              examples:
+                priority1:
+                  summary: Prioridad 1 - Crítico
+                  value:
+                    success: true
+                    data:
+                      level: 1
+                      description: "Crítico/Resucitación"
+                      color: "red"
+                      maxWaitTime: 0
+                      justification: "Riesgo vital inmediato que requiere intervención de emergencia"
+                
+                priority3:
+                  summary: Prioridad 3 - Urgente
+                  value:
+                    success: true
+                    data:
+                      level: 3
+                      description: "Urgente"
+                      color: "yellow"
+                      maxWaitTime: 30
+                      justification: "Requiere atención médica pronta pero condición estable"
+                
+                priority5:
+                  summary: Prioridad 5 - No urgente
+                  value:
+                    success: true
+                    data:
+                      level: 5
+                      description: "No urgente"
+                      color: "blue"
+                      maxWaitTime: 120
+                      justification: "Condición estable, puede esperar sin riesgo"
+        
+        '400':
+          description: Nivel de prioridad inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: "INVALID_PRIORITY_LEVEL"
+                  message: "Priority level must be between 1 and 5"
+                timestamp: 1704537000000
+        
+        '500':
+          $ref: '#/components/responses/InternalServerError'
