@@ -281,6 +281,94 @@ export class Database implements IAuditRepository {
   }
 
   /**
+   * Actualiza el estado de un triaje y asigna un médico
+   *
+   * HUMAN REVIEW: Método para actualizar el estado de atención de un paciente.
+   * En producción, ejecutar como transacción atómica con rollback en caso de error.
+   *
+   * Query SQL real:
+   * ```sql
+   * UPDATE triage_records
+   * SET status = $1, assigned_medic_id = $2, updated_at = NOW()
+   * WHERE id = $3
+   * RETURNING *;
+   * ```
+   *
+   * @param triageId - ID del registro de triaje
+   * @param status - Nuevo estado (ej. 'EN_ATENCION', 'COMPLETADO')
+   * @param medicId - ID del médico asignado
+   * @returns Objeto actualizado
+   */
+  public async updateTriageStatus(
+    triageId: string,
+    status: string,
+    medicId: string
+  ): Promise<{ triageId: string; status: string; medicId: string; updatedAt: Date }> {
+    // HUMAN REVIEW: Validar parámetros
+    if (!triageId || !triageId.trim()) {
+      throw new Error('Triage ID is required');
+    }
+
+    if (!status || !status.trim()) {
+      throw new Error('Status is required');
+    }
+
+    if (!medicId || !medicId.trim()) {
+      throw new Error('Medic ID is required');
+    }
+
+    try {
+      // HUMAN REVIEW: Simular delay de escritura a base de datos
+      await this.simulateDatabaseWrite();
+
+      const updatedAt = new Date();
+
+      console.log('[Database] Triage status updated in PostgreSQL:');
+      console.log(`  Triage ID: ${triageId}`);
+      console.log(`  New Status: ${status}`);
+      console.log(`  Assigned Medic: ${medicId}`);
+      console.log(`  Updated At: ${updatedAt.toISOString()}`);
+
+      // HUMAN REVIEW: En producción con PostgreSQL:
+      // const result = await this.pool.query(
+      //   `UPDATE triage_records
+      //    SET status = $1, assigned_medic_id = $2, updated_at = NOW()
+      //    WHERE id = $3
+      //    RETURNING *`,
+      //   [status, medicId, triageId]
+      // );
+      //
+      // if (result.rowCount === 0) {
+      //   throw new Error(`Triage record with ID ${triageId} not found`);
+      // }
+      //
+      // return this.mapRowToTriageRecord(result.rows[0]);
+
+      return {
+        triageId,
+        status,
+        medicId,
+        updatedAt
+      };
+    } catch (error) {
+      console.error('[Database] Error updating triage status:', error);
+      throw new Error(`Failed to update triage status: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Método estático para actualizar estado de triaje
+   */
+  public static async updateTriageStatus(
+    triageId: string,
+    status: string,
+    medicId: string
+  ): Promise<{ triageId: string; status: string; medicId: string; updatedAt: Date }> {
+    const instance = Database.getInstance();
+    return await instance.updateTriageStatus(triageId, status, medicId);
+  }
+
+  /**
    * Cierra la conexión a la base de datos
    *
    * HUMAN REVIEW: Llamar en shutdown graceful para cerrar pool de conexiones.

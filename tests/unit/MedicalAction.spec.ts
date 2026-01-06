@@ -12,7 +12,12 @@ describe('US-008: Aceptación de Caso por Médico (Fase Roja)', () => {
             medicId: "medic-789"
         };
 
-        const updateSpy = jest.spyOn(Database, 'updateTriageStatus');
+        const updateSpy = jest.spyOn(Database, 'updateTriageStatus').mockResolvedValue({
+            triageId: "triage-456",
+            status: "EN_ATENCION",
+            medicId: "medic-789",
+            updatedAt: new Date()
+        });
 
         await MedicalService.acceptPatient(assignmentData);
 
