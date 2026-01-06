@@ -50,16 +50,16 @@ export function validateRequiredFields<T extends Record<string, unknown>>(
 ): Result<void, Error> {
   for (const field of requiredFields) {
     const value = data[field];
-    
+
     if (value === undefined || value === null) {
       return Result.fail(new errorClass(`${String(field)} is required`));
     }
-    
+
     if (typeof value === 'string' && !value.trim()) {
       return Result.fail(new errorClass(`${String(field)} cannot be empty`));
     }
   }
-  
+
   return Result.ok(undefined);
 }
 
@@ -89,11 +89,11 @@ export function validateEmail(
   errorClass: new (message: string) => Error
 ): Result<void, Error> {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
+
   if (!emailRegex.test(email)) {
     return Result.fail(new errorClass('Invalid email format'));
   }
-  
+
   return Result.ok(undefined);
 }
 

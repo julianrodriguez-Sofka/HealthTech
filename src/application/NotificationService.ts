@@ -126,7 +126,7 @@ export class NotificationService {
       return Result.fail(new NotificationSendError(event.patientId, publishResult.error.message));
     }
 
-    logger.info(`High priority notification sent`, { patientId: event.patientId, priority: event.priority });
+    logger.info('High priority notification sent', { patientId: event.patientId, priority: event.priority });
 
     // HUMAN REVIEW: TODO - Próximas iteraciones:
     // - Notificar vía WebSocket a clientes conectados

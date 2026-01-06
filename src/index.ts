@@ -22,12 +22,12 @@ async function main(): Promise<void> {
   // Graceful shutdown handlers
   process.on('SIGTERM', () => {
     console.log('\n🛑 Received SIGTERM signal');
-    server.stop();
+    void server.stop();
   });
 
   process.on('SIGINT', () => {
     console.log('\n🛑 Received SIGINT signal (Ctrl+C)');
-    server.stop();
+    void server.stop();
   });
 
   process.on('uncaughtException', (error: Error) => {

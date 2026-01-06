@@ -51,7 +51,9 @@ export class Logger {
    * Registra mensaje de debug (solo en desarrollo)
    */
   public debug(message: string, context?: LogContext): void {
-    if (!this.shouldLog(LogLevel.DEBUG)) return;
+    if (!this.shouldLog(LogLevel.DEBUG)) {
+      return;
+    }
     this.log(LogLevel.DEBUG, message, context);
   }
 
@@ -59,7 +61,9 @@ export class Logger {
    * Registra mensaje informativo
    */
   public info(message: string, context?: LogContext): void {
-    if (!this.shouldLog(LogLevel.INFO)) return;
+    if (!this.shouldLog(LogLevel.INFO)) {
+      return;
+    }
     this.log(LogLevel.INFO, message, context);
   }
 
@@ -67,7 +71,9 @@ export class Logger {
    * Registra advertencia
    */
   public warn(message: string, context?: LogContext): void {
-    if (!this.shouldLog(LogLevel.WARN)) return;
+    if (!this.shouldLog(LogLevel.WARN)) {
+      return;
+    }
     this.log(LogLevel.WARN, message, context);
   }
 
@@ -75,14 +81,16 @@ export class Logger {
    * Registra error
    */
   public error(message: string, error?: Error, context?: LogContext): void {
-    if (!this.shouldLog(LogLevel.ERROR)) return;
-    
+    if (!this.shouldLog(LogLevel.ERROR)) {
+      return;
+    }
+
     const logContext = {
       ...context,
       errorMessage: error?.message,
       errorStack: this.isProduction ? undefined : error?.stack
     };
-    
+
     this.log(LogLevel.ERROR, message, logContext);
   }
 
@@ -101,7 +109,7 @@ export class Logger {
    */
   private log(level: LogLevel, message: string, context?: LogContext): void {
     const timestamp = new Date().toISOString();
-    
+
     const logEntry = {
       timestamp,
       level,
@@ -118,7 +126,7 @@ export class Logger {
 
     // Salida a consola con formato
     const output = JSON.stringify(logEntry);
-    
+
     switch (level) {
       case LogLevel.ERROR:
         // eslint-disable-next-line no-console
@@ -140,7 +148,9 @@ export class Logger {
    * HUMAN REVIEW: Security - enmascarar automáticamente campos sensibles
    */
   private sanitizeContext(context?: LogContext): LogContext | undefined {
-    if (!context) return undefined;
+    if (!context) {
+      return undefined;
+    }
 
     const sensitiveFields = ['password', 'token', 'apiKey', 'secret', 'ssn', 'creditCard'];
     const sanitized: LogContext = {};
