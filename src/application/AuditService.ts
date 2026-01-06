@@ -1,4 +1,5 @@
 import { Result } from '@shared/Result';
+import { logger } from '@shared/Logger';
 import type { IAuditRepository, AuditLogData, AuditSearchCriteria } from '@domain/repositories';
 import type { IIdGenerator } from '@application/interfaces';
 import {
@@ -134,14 +135,14 @@ export class AuditService {
     const saveResult = await this.auditRepository.save(auditData);
 
     if (saveResult.isFailure) {
-      console.error(`[AuditService] Failed to log action ${data.action} for user ${data.userId}:`, saveResult.error);
+      logger.error(`Failed to log action ${data.action}`, saveResult.error, { userId: data.userId, action: data.action });
       return Result.ok({
         success: false,
         error: saveResult.error.message
       });
     }
 
-    console.log(`[AuditService] Action logged successfully: ${data.action} by user ${data.userId}`);
+    logger.info(`Action logged successfully: ${data.action}`, { userId: data.userId, action: data.action });
 
     return Result.ok({
       success: true,
@@ -177,7 +178,7 @@ export class AuditService {
   public logActionAsync(data: AuditActionData): void {
     void this.logAction(data).then((result) => {
       if (result.isFailure || (result.value && !result.value.success)) {
-        console.error('[AuditService] Async audit logging failed');
+        logger.error('Async audit logging failed', undefined, { userId: data.userId, action: data.action });
       }
     });
   }

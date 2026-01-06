@@ -228,11 +228,13 @@ export class Database implements IAuditRepository {
   /**
    * Genera un ID único para el log de auditoría
    *
-   * HUMAN REVIEW: En producción, usar UUID v4 o dejar que PostgreSQL
-   * genere el ID con una secuencia o columna SERIAL.
+   * HUMAN REVIEW: Security fix - reemplazado Math.random() con crypto.randomUUID()
+   * que es criptográficamente seguro. En producción real, usar UUID v4 de PostgreSQL.
    */
   private generateLogId(): string {
-    return `AUDIT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // SECURITY: Usar crypto.randomUUID() en lugar de Math.random()
+    const uniqueId = crypto.randomUUID().substring(0, 12);
+    return `AUDIT-${Date.now()}-${uniqueId}`;
   }
 
   /**
@@ -243,7 +245,9 @@ export class Database implements IAuditRepository {
    */
   private async simulateDatabaseWrite(): Promise<void> {
     // HUMAN REVIEW: Simular 10-50ms de latencia de escritura a DB
-    const latency = Math.random() * 40 + 10;
+    // SECURITY: Usar crypto para generar latencia aleatoria de forma segura
+    const randomBytes = crypto.randomUUID().charCodeAt(0);
+    const latency = 10 + (randomBytes % 40);
     await new Promise((resolve) => setTimeout(resolve, latency));
   }
 

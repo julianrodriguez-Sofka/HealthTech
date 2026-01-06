@@ -1,4 +1,5 @@
 import { Result } from '@shared/Result';
+import { logger } from '@shared/Logger';
 import type { IMessagingService } from '@application/interfaces';
 import type { IIdGenerator } from '@application/interfaces';
 import {
@@ -102,7 +103,7 @@ export class NotificationService {
 
     // HUMAN REVIEW: Lógica de negocio - Solo notificar si es alta prioridad
     if (!this.isHighPriority(event.priority)) {
-      console.log(`[NotificationService] Priority ${event.priority} does not require immediate notification`);
+      logger.debug(`Priority ${event.priority} does not require immediate notification`, { priority: event.priority });
       return Result.ok(undefined); // No es error, simplemente no requiere notificación
     }
 
@@ -125,7 +126,7 @@ export class NotificationService {
       return Result.fail(new NotificationSendError(event.patientId, publishResult.error.message));
     }
 
-    console.log(`[NotificationService] High priority notification sent for patient ${event.patientId}`);
+    logger.info(`High priority notification sent`, { patientId: event.patientId, priority: event.priority });
 
     // HUMAN REVIEW: TODO - Próximas iteraciones:
     // - Notificar vía WebSocket a clientes conectados
