@@ -124,8 +124,8 @@ jobs:
       # ¿Cómo se conecta el reporte de cobertura con SonarCloud?
       # 
       # 1. Jest genera coverage/lcov.info durante el paso anterior
-      # 2. SonarCloud lee este archivo automáticamente si está en
-      #    la ubicación estándar o se especifica en sonar-project.properties
+      # 2. SonarCloud lee este archivo automáticamente usando la
+      #    configuración en sonar-project.properties
       # 3. SonarCloud analiza:
       #    - Cobertura de código (líneas, branches, funciones)
       #    - Code smells y vulnerabilidades
@@ -145,14 +145,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           # Token de GitHub (automático, para comentar en PRs)
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          # Argumentos adicionales para SonarScanner
-          args: >
-            -Dsonar.projectKey=julianrodriguez-Sofka_HealthTech
-            -Dsonar.organization=julianrodriguez-sofka
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.coverage.exclusions=**/*.test.ts,**/*.spec.ts,**/tests/**
-            -Dsonar.qualitygate.wait=true
 
 # ====================================================================
 # CONFIGURACIÓN REQUERIDA EN SONARCLOUD
