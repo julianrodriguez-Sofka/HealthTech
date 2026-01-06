@@ -1,5 +1,5 @@
 {
-  "name": "healthtech",
+  "name": "healthtech-triage",
   "version": "1.0.0",
   "description": "Sistema de gestión de salud con arquitectura en capas y principios SOLID",
   "main": "dist/index.js",
@@ -10,11 +10,10 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "test": "jest --coverage",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --coverageReporters=lcov text",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "test": "jest",
+    "test:coverage": "jest --coverage --coverageReporters=lcov --coverageReporters=text",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "clean": "rimraf dist coverage"
   },
