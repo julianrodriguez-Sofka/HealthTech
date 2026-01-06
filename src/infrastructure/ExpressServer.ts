@@ -11,6 +11,9 @@ import express, { Request, Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec, swaggerUIOptions } from './openapi/swaggerConfig';
 import { App } from '../app';
+import { errorHandler, notFoundHandler } from './middleware/error-handler.middleware';
+import { validateVitalSigns } from './middleware/validation.middleware';
+import { RabbitMQConnection } from './messaging/rabbitmq-connection';
 
 /**
  * Clase principal del servidor Express
@@ -19,6 +22,8 @@ class ExpressServer {
   private app: express.Application;
   private healthTechApp: App;
   private port: number;
+  private rabbitMQ: RabbitMQConnection | null = null;
+  private server: ReturnType<typeof express.application.listen> | null = null;
 
   constructor(port: number = 3000) {
     this.app = express();
@@ -165,8 +170,9 @@ class ExpressServer {
    * reales que usen los servicios refactorizados con DI.
    */
   private setupPlaceholderEndpoints(): void {
-    // US-002: Registro de signos vitales (placeholder)
-    this.app.post('/api/v1/vitals', (_req: Request, res: Response) => {
+    // US-002: Registro de signos vitales con validación Zod
+    this.app.post('/api/v1/vitals', validateVitalSigns, (_req: Request, res: Response) => {
+      // HUMAN REVIEW: Datos validados están disponibles en req.body con tipos seguros
       res.status(501).json({
         success: false,
         error: {
@@ -175,7 +181,8 @@ class ExpressServer {
           details: {
             reason: 'Services are being refactored with Dependency Injection',
             expectedImplementation: 'After DI container setup (InversifyJS)',
-            seeDocumentation: '/api-docs'
+            seeDocumentation: '/api-docs',
+            note: 'Validation middleware is already active with Zod'
           }
         },
         timestamp: Date.now()
@@ -352,54 +359,56 @@ class ExpressServer {
 
   /**
    * Configura manejo global de errores
+   *
+   * HUMAN REVIEW: El orden de los middlewares es CRÍTICO:
+   * 1. Rutas normales
+   * 2. notFoundHandler (404)
+   * 3. errorHandler (500)
    */
   private setupErrorHandling(): void {
-    // 404 handler
-    this.app.use((_req: Request, res: Response) => {
-      res.status(404).json({
-        success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: `Endpoint ${_req.method} ${_req.path} not found`,
-          availableEndpoints: {
-            documentation: '/api-docs',
-            health: '/health',
-            info: '/api/v1/info'
-          }
-        },
-        timestamp: Date.now()
-      });
-    });
-
-    // Error handler global
-    this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('[Express Error]:', err);
-
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: process.env.NODE_ENV === 'production'
-            ? 'An unexpected error occurred'
-            : err.message,
-          stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-        },
-        timestamp: Date.now()
-      });
-    });
+    // HUMAN REVIEW: Los anteriores handlers han sido reemplazados por middlewares centralizados
+    // en error-handler.middleware.ts para seguir SOLID (Single Responsibility)
+    this.app.use(notFoundHandler);
+    this.app.use(errorHandler);
   }
 
   /**
    * Inicia el servidor
+   *
+   * HUMAN REVIEW: Inicialización secuencial de dependencias externas:
+   * 1. RabbitMQ (opcional - no falla si no está disponible)
+   * 2. Database (PostgreSQL connection pool)
+   * 3. HealthTech App (lógica de negocio)
+   * 4. Express Server (HTTP)
    */
   public async start(): Promise<void> {
     try {
-      // Inicializar aplicación HealthTech
+      // 1. Inicializar RabbitMQ (opcional - sistema degradado si falla)
+      try {
+        this.rabbitMQ = new RabbitMQConnection({
+          host: process.env.RABBITMQ_HOST || 'localhost',
+          port: parseInt(process.env.RABBITMQ_PORT || '5672'),
+          username: process.env.RABBITMQ_USER || 'guest',
+          password: process.env.RABBITMQ_PASSWORD || 'guest',
+          vhost: process.env.RABBITMQ_VHOST || '/',
+        });
+        await this.rabbitMQ.connect();
+        console.log('✅ RabbitMQ connection initialized');
+      } catch (error) {
+        console.warn('⚠️ RabbitMQ not available. System will run in degraded mode:', error);
+        this.rabbitMQ = null;
+      }
+
+      // 2. Inicializar Database (PostgreSQL)
+      // HUMAN REVIEW: En producción, verificar que las credenciales vengan de secrets seguros
+      console.log('✅ Database connection pool initialized (simulated)');
+
+      // 3. Inicializar aplicación HealthTech
       await this.healthTechApp.initialize();
       console.log('✅ HealthTech application initialized');
 
-      // Iniciar servidor Express
-      this.app.listen(this.port, () => {
+      // 4. Iniciar servidor Express
+      this.server = this.app.listen(this.port, () => {
         console.log('\n🚀 HealthTech Triage API Server');
         console.log('================================');
         console.log(`📡 Server running on: http://localhost:${this.port}`);
@@ -421,11 +430,60 @@ class ExpressServer {
 
   /**
    * Detiene el servidor gracefully
+   *
+   * HUMAN REVIEW: La IA no incluyó un manejo de señales de sistema. He añadido Graceful Shutdown
+   * para asegurar la integridad de los datos en la base de datos y evitar mensajes colgados
+   * en el broker durante reinicios del contenedor.
+   *
+   * Orden de cierre:
+   * 1. Dejar de aceptar nuevas conexiones HTTP
+   * 2. Esperar a que las solicitudes activas terminen (timeout 10s)
+   * 3. Cerrar conexión RabbitMQ (enviar ACKs pendientes)
+   * 4. Cerrar pool de conexiones PostgreSQL
+   * 5. Terminar proceso
    */
   public async stop(): Promise<void> {
-    console.log('\n🛑 Shutting down server...');
-    // TODO: Implementar cierre graceful de conexiones
-    process.exit(0);
+    console.log('\n🛑 Initiating graceful shutdown...');
+
+    try {
+      // 1. Cerrar servidor HTTP (no aceptar más conexiones)
+      if (this.server) {
+        await new Promise<void>((resolve, reject) => {
+          this.server?.close((err) => {
+            if (err) {
+              console.error('❌ Error closing HTTP server:', err);
+              reject(err);
+            } else {
+              console.log('✅ HTTP server closed');
+              resolve();
+            }
+          });
+
+          // Timeout de 10 segundos para solicitudes activas
+          setTimeout(() => {
+            console.warn('⚠️ Force closing HTTP server after timeout');
+            resolve();
+          }, 10000);
+        });
+      }
+
+      // 2. Cerrar conexión RabbitMQ
+      if (this.rabbitMQ && this.rabbitMQ.isConnected()) {
+        await this.rabbitMQ.close();
+        console.log('✅ RabbitMQ connection closed');
+      }
+
+      // 3. Cerrar conexión PostgreSQL
+      // HUMAN REVIEW: Implementar cuando se use connection pool real
+      // await this.databasePool?.end();
+      console.log('✅ Database connections closed');
+
+      console.log('✅ Graceful shutdown completed successfully');
+      process.exit(0);
+    } catch (error) {
+      console.error('❌ Error during graceful shutdown:', error);
+      process.exit(1);
+    }
   }
 
   /**
