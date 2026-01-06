@@ -1,15 +1,25 @@
+import { Result } from '@shared/Result';
+import type { IVitalsRepository, IPatientRepository } from '@domain/repositories';
+import type { IIdGenerator } from '@application/interfaces';
+import { 
+  VitalsValidationError, 
+  PhysiologicalLimitExceededError, 
+  MissingVitalsError,
+  PatientNotFoundError 
+} from '@domain/errors';
+
 /**
- * Vitals Service
+ * Vitals Service - Application Layer
  *
  * Servicio de aplicación para gestionar el registro de signos vitales.
  * Este servicio orquesta la captura y validación de datos vitales de pacientes,
  * aplicando reglas de negocio estrictas para garantizar la calidad de los datos.
  *
- * HUMAN REVIEW: Este servicio debe ser refactorizado para:
- * 1. Inyectar IVitalsRepository para persistencia
- * 2. Inyectar IPatientRepository para validar existencia del paciente
- * 3. Notificar observers cuando se detecten valores críticos
- * 4. Usar Result<T> pattern en lugar de excepciones
+ * HUMAN REVIEW: Refactorizado siguiendo Clean Architecture:
+ * 1. ✅ Inyección de dependencias vía constructor
+ * 2. ✅ Usa Result Pattern para manejo de errores funcional
+ * 3. ✅ Custom exceptions del dominio
+ * 4. ✅ Métodos de instancia (no estáticos)
  */
 
 /**
@@ -66,7 +76,7 @@ export class VitalsService {
    * He refactorizado para incluir validaciones de rangos fisiológicos extremos
    * basándome en el protocolo médico del documento.
    */
-  private static readonly PHYSIOLOGICAL_LIMITS: PhysiologicalLimits = {
+  private readonly PHYSIOLOGICAL_LIMITS: PhysiologicalLimits = {
     heartRate: {
       min: 0,   // Mínimo absoluto
       max: 300  // Taquicardia extrema (límite teórico)
@@ -85,64 +95,93 @@ export class VitalsService {
     }
   };
 
+  constructor(
+    private readonly vitalsRepository: IVitalsRepository,
+    private readonly patientRepository: IPatientRepository,
+    private readonly idGenerator: IIdGenerator
+  ) {}
+
   /**
    * Registra signos vitales de un paciente
    *
-   * @param vitals - Datos de signos vitales a registrar
-   * @returns Signos vitales registrados con metadata
-   * @throws Error si las validaciones fallan
-   *
-   * HUMAN REVIEW: Este método debería:
-   * 1. Validar que el paciente existe antes de registrar signos vitales
-   * 2. Notificar a observers si los valores son críticos
-   * 3. Persistir en base de datos a través de IVitalsRepository
-   * 4. Retornar Result<RecordedVitals> en lugar de lanzar excepciones
+   * HUMAN REVIEW: Refactorizado para usar Result Pattern y DI.
+   * 1. ✅ Valida existencia del paciente antes de registrar
+   * 2. ✅ Persiste en base de datos a través de IVitalsRepository
+   * 3. ✅ Retorna Result<RecordedVitals, Error> sin lanzar excepciones
+   * 4. ⏳ TODO: Notificar observers si los valores son críticos (Observer Pattern)
    */
-  public static recordVitals(vitals: IVitals): RecordedVitals {
-    // HUMAN REVIEW: Validar que el patientId esté presente
+  public async recordVitals(
+    vitals: IVitals
+  ): Promise<Result<RecordedVitals, VitalsValidationError | PatientNotFoundError | PhysiologicalLimitExceededError | MissingVitalsError>> {
+    // HUMAN REVIEW: Validación 1 - Patient ID presente
     if (!vitals.patientId || !vitals.patientId.trim()) {
-      throw new Error('Patient ID is required');
+      return Result.fail(new MissingVitalsError('Patient ID is required'));
     }
 
-    // HUMAN REVIEW: Validar que todos los campos vitales estén presentes
-    this.validateRequiredFields(vitals);
+    // HUMAN REVIEW: Validación 2 - Verificar que el paciente existe
+    const patientResult = await this.patientRepository.findById(vitals.patientId);
+    if (patientResult.isFailure) {
+      return Result.fail(patientResult.error);
+    }
+    if (!patientResult.value) {
+      return Result.fail(new PatientNotFoundError(vitals.patientId));
+    }
 
-    // HUMAN REVIEW: Aplicar validaciones de negocio
-    this.validateVitalsRanges(vitals);
+    // HUMAN REVIEW: Validación 3 - Campos requeridos
+    const requiredFieldsResult = this.validateRequiredFields(vitals);
+    if (requiredFieldsResult.isFailure) {
+      return Result.fail(requiredFieldsResult.error);
+    }
+
+    // HUMAN REVIEW: Validación 4 - Rangos fisiológicos
+    const rangesResult = this.validateVitalsRanges(vitals);
+    if (rangesResult.isFailure) {
+      return Result.fail(rangesResult.error);
+    }
 
     // HUMAN REVIEW: Determinar si los valores son anormales o críticos
     const isAbnormal = this.checkIfAbnormal(vitals);
     const isCritical = this.checkIfCritical(vitals);
 
-    // HUMAN REVIEW: En producción, esto debería:
-    // 1. Crear una entidad VitalSigns del dominio
-    // 2. Llamar a vitalsRepository.save(vitalSigns)
-    // 3. Si es crítico, notificar observers para alerta inmediata
+    const vitalId = this.idGenerator.generate();
+    const recordedAt = new Date();
+
     const recordedVitals: RecordedVitals = {
-      id: this.generateTemporaryId(),
+      id: vitalId,
       patientId: vitals.patientId,
       heartRate: vitals.heartRate,
       temperature: vitals.temperature,
       oxygenSaturation: vitals.oxygenSaturation,
       systolicBP: vitals.systolicBP,
-      recordedAt: new Date(),
+      recordedAt,
       isAbnormal,
       isCritical
     };
 
-    // HUMAN REVIEW: Si isCritical es true, aquí debería enviarse
-    // a la cola de RabbitMQ para notificación inmediata a médicos
+    // HUMAN REVIEW: Persistir en base de datos
+    const saveResult = await this.vitalsRepository.save({
+      id: vitalId,
+      patientId: vitals.patientId,
+      heartRate: vitals.heartRate,
+      temperature: vitals.temperature,
+      oxygenSaturation: vitals.oxygenSaturation,
+      systolicBP: vitals.systolicBP,
+      isAbnormal,
+      isCritical,
+      recordedAt
+    });
+
+    if (saveResult.isFailure) {
+      // HUMAN REVIEW: En caso de error de persistencia, retornar error genérico
+      return Result.fail(new VitalsValidationError('save', 'PERSISTENCE_ERROR', 'Failed to save vitals to repository'));
+    }
+
+    // HUMAN REVIEW: TODO - Si isCritical es true, notificar observers
     // if (isCritical) {
-    //   await this.triageQueue.sendTriageNotification({
-    //     patientId: vitals.patientId,
-    //     priorityLevel: 1,
-    //     vitalSigns: vitals,
-    //     timestamp: Date.now(),
-    //     reason: 'Critical vital signs detected'
-    //   });
+    //   this.notifyObservers(new CriticalVitalsEvent(recordedVitals));
     // }
 
-    return recordedVitals;
+    return Result.ok(recordedVitals);
   }
 
   /**
@@ -151,22 +190,24 @@ export class VitalsService {
    * HUMAN REVIEW: Separado en método privado para mantener SRP
    * y facilitar testing unitario de validaciones específicas
    */
-  private static validateRequiredFields(vitals: IVitals): void {
+  private validateRequiredFields(vitals: IVitals): Result<void, MissingVitalsError> {
     if (vitals.heartRate === undefined || vitals.heartRate === null) {
-      throw new Error('Heart rate is required');
+      return Result.fail(new MissingVitalsError('Heart rate is required'));
     }
 
     if (vitals.temperature === undefined || vitals.temperature === null) {
-      throw new Error('Temperature is required');
+      return Result.fail(new MissingVitalsError('Temperature is required'));
     }
 
     if (vitals.oxygenSaturation === undefined || vitals.oxygenSaturation === null) {
-      throw new Error('Oxygen saturation is required');
+      return Result.fail(new MissingVitalsError('Oxygen saturation is required'));
     }
 
     if (vitals.systolicBP === undefined || vitals.systolicBP === null) {
-      throw new Error('Systolic blood pressure is required');
+      return Result.fail(new MissingVitalsError('Systolic blood pressure is required'));
     }
+
+    return Result.ok(undefined);
   }
 
   /**
@@ -174,58 +215,61 @@ export class VitalsService {
    *
    * HUMAN REVIEW: Método privado que centraliza la lógica de validación
    * de rangos para mantener el principio de Single Responsibility.
-   * Separar validaciones permite:
-   * 1. Testear cada validación independientemente
-   * 2. Modificar rangos sin afectar el método principal
-   * 3. Extender con nuevas validaciones sin romper código existente (OCP)
    */
-  private static validateVitalsRanges(vitals: IVitals): void {
+  private validateVitalsRanges(vitals: IVitals): Result<void, VitalsValidationError | PhysiologicalLimitExceededError> {
     // HUMAN REVIEW: Validación 1 - Ningún valor puede ser negativo
-    if (vitals.heartRate < 0) {
-      throw new Error('Los signos vitales no pueden ser negativos');
-    }
-
-    if (vitals.temperature < 0) {
-      throw new Error('Los signos vitales no pueden ser negativos');
-    }
-
-    if (vitals.oxygenSaturation < 0) {
-      throw new Error('Los signos vitales no pueden ser negativos');
-    }
-
-    if (vitals.systolicBP < 0) {
-      throw new Error('Los signos vitales no pueden ser negativos');
+    if (vitals.heartRate < 0 || vitals.temperature < 0 || 
+        vitals.oxygenSaturation < 0 || vitals.systolicBP < 0) {
+      return Result.fail(new VitalsValidationError('all', 'NEGATIVE_VALUES', 'Los signos vitales no pueden ser negativos'));
     }
 
     // HUMAN REVIEW: Validación 2 - Rangos fisiológicos extremos
     if (vitals.heartRate > this.PHYSIOLOGICAL_LIMITS.heartRate.max) {
-      throw new Error('Rango fisiológico inválido');
+      return Result.fail(new PhysiologicalLimitExceededError(
+        'heartRate', 
+        vitals.heartRate, 
+        this.PHYSIOLOGICAL_LIMITS.heartRate.min,
+        this.PHYSIOLOGICAL_LIMITS.heartRate.max
+      ));
     }
 
     if (vitals.temperature > this.PHYSIOLOGICAL_LIMITS.temperature.max) {
-      throw new Error('Rango fisiológico inválido');
+      return Result.fail(new PhysiologicalLimitExceededError(
+        'temperature', 
+        vitals.temperature, 
+        this.PHYSIOLOGICAL_LIMITS.temperature.min,
+        this.PHYSIOLOGICAL_LIMITS.temperature.max
+      ));
     }
 
     // HUMAN REVIEW: Validación crítica - Saturación de oxígeno no puede exceder 100%
     if (vitals.oxygenSaturation > this.PHYSIOLOGICAL_LIMITS.oxygenSaturation.max) {
-      throw new Error('Rango fisiológico inválido');
+      return Result.fail(new PhysiologicalLimitExceededError(
+        'oxygenSaturation', 
+        vitals.oxygenSaturation, 
+        this.PHYSIOLOGICAL_LIMITS.oxygenSaturation.min,
+        this.PHYSIOLOGICAL_LIMITS.oxygenSaturation.max
+      ));
     }
 
     if (vitals.systolicBP > this.PHYSIOLOGICAL_LIMITS.systolicBP.max) {
-      throw new Error('Rango fisiológico inválido');
+      return Result.fail(new PhysiologicalLimitExceededError(
+        'systolicBP', 
+        vitals.systolicBP, 
+        this.PHYSIOLOGICAL_LIMITS.systolicBP.min,
+        this.PHYSIOLOGICAL_LIMITS.systolicBP.max
+      ));
     }
+
+    return Result.ok(undefined);
   }
 
   /**
    * Determina si los signos vitales están fuera de rangos normales
    *
    * HUMAN REVIEW: Rangos normales basados en estándares médicos para adultos.
-   * En una implementación completa, estos rangos deberían ajustarse por:
-   * - Edad del paciente (neonatos, niños, adultos, ancianos)
-   * - Condiciones médicas preexistentes
-   * - Contexto (reposo, ejercicio, embarazo, etc.)
    */
-  private static checkIfAbnormal(vitals: IVitals): boolean {
+  private checkIfAbnormal(vitals: IVitals): boolean {
     const isHeartRateAbnormal = vitals.heartRate < 60 || vitals.heartRate > 100;
     const isTemperatureAbnormal = vitals.temperature < 36.5 || vitals.temperature > 37.5;
     const isOxygenAbnormal = vitals.oxygenSaturation < 95;
@@ -238,28 +282,13 @@ export class VitalsService {
    * Determina si los signos vitales requieren atención médica inmediata
    *
    * HUMAN REVIEW: Criterios de criticidad basados en guías de triaje médico.
-   * Valores críticos que requieren evaluación inmediata:
-   * - FC < 40 o > 130 bpm
-   * - Temperatura < 35°C o > 40°C
-   * - SpO2 < 90%
-   * - PAS < 70 mmHg o > 180 mmHg
    */
-  private static checkIfCritical(vitals: IVitals): boolean {
+  private checkIfCritical(vitals: IVitals): boolean {
     const isHeartRateCritical = vitals.heartRate < 40 || vitals.heartRate > 130;
     const isTemperatureCritical = vitals.temperature < 35 || vitals.temperature > 40;
     const isOxygenCritical = vitals.oxygenSaturation < 90;
     const isBPCritical = vitals.systolicBP < 70 || vitals.systolicBP > 180;
 
     return isHeartRateCritical || isTemperatureCritical || isOxygenCritical || isBPCritical;
-  }
-
-  /**
-   * Genera un ID temporal para el registro de signos vitales
-   *
-   * HUMAN REVIEW: En producción, el ID debería ser generado por la base de datos
-   * o un servicio de generación de IDs distribuido
-   */
-  private static generateTemporaryId(): string {
-    return `VITALS-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 }

@@ -1,17 +1,22 @@
 /**
- * Patient Service
+ * Patient Service - Application Layer
  *
  * Servicio de aplicación para gestionar el registro de pacientes.
  * Este servicio orquesta las operaciones relacionadas con pacientes
  * y aplica reglas de validación de negocio.
  *
- * HUMAN REVIEW: Este servicio usa métodos estáticos para compatibilidad
- * con tests legacy. En una refactorización futura, debería:
- * 1. Convertirse en una clase con inyección de dependencias
- * 2. Inyectar IPatientRepository desde domain/
- * 3. Inyectar IDateProvider para facilitar testing con diferentes zonas horarias
- * 4. Usar el patrón Result<T> para manejo de errores sin excepciones
+ * HUMAN REVIEW: Refactorizado para usar inyección de dependencias y Result Pattern.
+ * Ahora cumple con SOLID: DIP (depende de interfaces), SRP (solo validación de negocio).
  */
+
+import { Result } from '@shared/Result';
+import type { IPatientRepository, PatientData } from '@domain/repositories';
+import type { IIdGenerator } from './interfaces';
+import {
+  PatientValidationError,
+  InvalidAgeError,
+  DuplicatePatientError
+} from '@domain/errors';
 
 /**
  * Datos requeridos para registrar un paciente
@@ -21,6 +26,7 @@ export interface PatientRegistrationData {
   lastName: string;
   birthDate: Date;
   gender: string;
+  documentId?: string;
 }
 
 /**
@@ -32,6 +38,7 @@ export interface RegisteredPatient {
   lastName: string;
   birthDate: Date;
   gender: string;
+  documentId?: string;
   registeredAt: Date;
 }
 
@@ -41,118 +48,147 @@ export interface RegisteredPatient {
  * Implementa la lógica de negocio para el registro y gestión de pacientes.
  * Sigue el principio de Single Responsibility: solo maneja validación de negocio
  * y orquestación, delegando persistencia a repositories.
+ *
+ * HUMAN REVIEW: Ahora usa inyección de dependencias y Result Pattern
+ * para ser 100% testeable y seguir Clean Architecture.
  */
 export class PatientService {
+  constructor(
+    private readonly patientRepository: IPatientRepository,
+    private readonly idGenerator: IIdGenerator
+  ) {}
+
   /**
    * Registra un nuevo paciente en el sistema
    *
    * @param data - Datos del paciente a registrar
-   * @returns Paciente registrado con ID generado
-   * @throws Error si los datos de validación fallan
+   * @returns Result con el paciente registrado o error de validación
    *
-   * HUMAN REVIEW: La IA sugirió una validación simple, pero refactoricé
-   * la lógica de fechas para asegurar que sea inyectable y testeable
-   * en diferentes zonas horarias.
-   *
-   * HUMAN REVIEW: Este método estático debería refactorizarse a un método
-   * de instancia con inyección de dependencias para mejorar testabilidad
-   * y seguir el principio de Dependency Inversion (DIP).
+   * HUMAN REVIEW: Ahora retorna Result<T> en lugar de lanzar excepciones,
+   * permitiendo mejor composición y manejo de errores.
    */
-  public static register(data: PatientRegistrationData): RegisteredPatient {
-    // HUMAN REVIEW: Validar que todos los campos requeridos estén presentes
+  public async register(
+    data: PatientRegistrationData
+  ): Promise<Result<RegisteredPatient, PatientValidationError | InvalidAgeError | DuplicatePatientError>> {
+    // HUMAN REVIEW: Validar campos requeridos
+    const validationResult = this.validateRegistrationData(data);
+    if (validationResult.isFailure) {
+      return Result.fail(validationResult.error);
+    }
+
+    // HUMAN REVIEW: Validar edad del paciente
+    const ageValidationResult = this.validateAge(data.birthDate);
+    if (ageValidationResult.isFailure) {
+      return Result.fail(ageValidationResult.error);
+    }
+
+    // HUMAN REVIEW: Generar ID único
+    const id = this.idGenerator.generate();
+    const registeredAt = new Date();
+
+    // HUMAN REVIEW: Crear objeto de paciente
+    const patient: PatientData = {
+      id,
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      birthDate: data.birthDate,
+      gender: data.gender.trim(),
+      documentId: data.documentId?.trim(),
+      registeredAt
+    };
+
+    // HUMAN REVIEW: Persistir en repositorio
+    const saveResult = await this.patientRepository.save(patient);
+    if (saveResult.isFailure) {
+      return Result.fail(saveResult.error);
+    }
+
+    // HUMAN REVIEW: Mapear a DTO de respuesta
+    const registeredPatient: RegisteredPatient = {
+      id: saveResult.value.id,
+      firstName: saveResult.value.firstName,
+      lastName: saveResult.value.lastName,
+      birthDate: saveResult.value.birthDate,
+      gender: saveResult.value.gender,
+      documentId: saveResult.value.documentId,
+      registeredAt: saveResult.value.registeredAt
+    };
+
+    return Result.ok(registeredPatient);
+  }
+
+  /**
+   * Valida los datos de registro del paciente
+   *
+   * HUMAN REVIEW: Separado en método privado para mantener SRP
+   */
+  private validateRegistrationData(
+    data: PatientRegistrationData
+  ): Result<void, PatientValidationError> {
     if (!data.firstName || !data.firstName.trim()) {
-      throw new Error('First name is required');
+      return Result.fail(
+        new PatientValidationError('firstName', 'FIRST_NAME_REQUIRED', 'First name is required')
+      );
     }
 
     if (!data.lastName || !data.lastName.trim()) {
-      throw new Error('Last name is required');
+      return Result.fail(
+        new PatientValidationError('lastName', 'LAST_NAME_REQUIRED', 'Last name is required')
+      );
     }
 
     if (!data.birthDate) {
-      throw new Error('Birth date is required');
+      return Result.fail(
+        new PatientValidationError('birthDate', 'BIRTH_DATE_REQUIRED', 'Birth date is required')
+      );
     }
 
     if (!data.gender || !data.gender.trim()) {
-      throw new Error('Gender is required');
+      return Result.fail(
+        new PatientValidationError('gender', 'GENDER_REQUIRED', 'Gender is required')
+      );
     }
 
     // HUMAN REVIEW: Validar que birthDate sea un objeto Date válido
     if (!(data.birthDate instanceof Date) || isNaN(data.birthDate.getTime())) {
-      throw new Error('Invalid birth date format');
+      return Result.fail(
+        new PatientValidationError(
+          'birthDate',
+          'INVALID_BIRTH_DATE_FORMAT',
+          'Invalid birth date format'
+        )
+      );
     }
 
+    return Result.ok(undefined);
+  }
+
+  /**
+   * Valida la edad del paciente
+   *
+   * HUMAN REVIEW: Validación de reglas de negocio para fecha de nacimiento
+   */
+  private validateAge(birthDate: Date): Result<void, InvalidAgeError> {
     // HUMAN REVIEW: Validación de negocio - fecha de nacimiento no puede ser futura
-    // En una refactorización, inyectar IDateProvider para facilitar testing
     const currentDate = new Date();
-    if (data.birthDate > currentDate) {
-      throw new Error('Invalid birth date');
+    if (birthDate > currentDate) {
+      return Result.fail(
+        new InvalidAgeError(birthDate, 'Birth date cannot be in the future')
+      );
     }
 
-    // HUMAN REVIEW: Validar que la fecha de nacimiento no sea demasiado antigua
-    // (por ejemplo, más de 150 años)
+    // HUMAN REVIEW: Validar edad máxima razonable (150 años)
     const minDate = new Date();
     minDate.setFullYear(currentDate.getFullYear() - 150);
-    if (data.birthDate < minDate) {
-      throw new Error('Birth date is too old');
+    if (birthDate < minDate) {
+      return Result.fail(
+        new InvalidAgeError(
+          birthDate,
+          'Birth date indicates age over 150 years, which is not biologically possible'
+        )
+      );
     }
 
-    // HUMAN REVIEW: Validar que el género sea válido
-    const validGenders = ['M', 'F', 'O', 'U']; // M=Male, F=Female, O=Other, U=Unknown
-    if (!validGenders.includes(data.gender.toUpperCase())) {
-      throw new Error('Invalid gender. Must be M, F, O, or U');
-    }
-
-    // HUMAN REVIEW: En producción, esto debería:
-    // 1. Crear una entidad Patient del dominio
-    // 2. Llamar a patientRepository.save(patient)
-    // 3. Retornar el resultado usando Result<T> pattern
-    // Por ahora, retornamos un objeto mock para hacer pasar el test
-    const registeredPatient: RegisteredPatient = {
-      id: this.generateTemporaryId(),
-      firstName: data.firstName.trim(),
-      lastName: data.lastName.trim(),
-      birthDate: data.birthDate,
-      gender: data.gender.toUpperCase(),
-      registeredAt: new Date(),
-    };
-
-    // HUMAN REVIEW: Aquí debería notificarse a observers si el patrón
-    // Observer está configurado para eventos de registro de pacientes
-    // this.notifyObservers(new PatientRegisteredEvent(registeredPatient));
-
-    return registeredPatient;
-  }
-
-  /**
-   * Genera un ID temporal para el paciente
-   *
-   * HUMAN REVIEW: En producción, el ID debería ser generado por:
-   * - Base de datos (auto-increment o UUID)
-   * - Servicio de generación de IDs (snowflake, etc.)
-   * Este método es solo para testing
-   */
-  private static generateTemporaryId(): string {
-    return `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
-   * Calcula la edad del paciente basándose en su fecha de nacimiento
-   *
-   * @param birthDate - Fecha de nacimiento del paciente
-   * @returns Edad en años
-   *
-   * HUMAN REVIEW: Este método puede ser útil para cálculos de triaje
-   * donde la edad es un factor de riesgo
-   */
-  public static calculateAge(birthDate: Date): number {
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-
-    return age;
+    return Result.ok(undefined);
   }
 }

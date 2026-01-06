@@ -12,7 +12,8 @@
     "paths": {
       "@domain/*": ["domain/*"],                 // Alias para capa de dominio
       "@application/*": ["application/*"],       // Alias para capa de aplicación
-      "@infrastructure/*": ["infrastructure/*"]  // Alias para capa de infraestructura
+      "@infrastructure/*": ["infrastructure/*"], // Alias para capa de infraestructura
+      "@shared/*": ["shared/*"]                  // Alias para utilidades compartidas
     },
     "resolveJsonModule": true,                   // Permite importar archivos JSON
     
