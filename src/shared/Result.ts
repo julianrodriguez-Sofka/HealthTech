@@ -70,13 +70,17 @@ export class Result<T, E = Error> {
    * HUMAN REVIEW: Útil para validaciones en secuencia donde todas
    * deben pasar para continuar
    */
-  public static combine<T = void>(results: Result<unknown, Error>[]): Result<T, Error> {
+  public static combine<T>(results: Result<T, Error>[]): Result<T[], Error> {
+    const values: T[] = [];
+    
     for (const result of results) {
       if (result.isFailure) {
         return Result.fail(result.error);
       }
+      values.push(result.value);
     }
-    return Result.ok(undefined as T);
+    
+    return Result.ok(values);
   }
 
   /**

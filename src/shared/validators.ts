@@ -98,6 +98,40 @@ export function validateEmail(
 }
 
 /**
+ * Valida longitud mínima de string
+ */
+export function validateMinLength(
+  value: string,
+  minLength: number,
+  fieldName: string,
+  errorClass: new (message: string) => Error
+): Result<void, Error> {
+  if (value.length < minLength) {
+    return Result.fail(
+      new errorClass(`${fieldName} must be at least ${minLength} characters`)
+    );
+  }
+  return Result.ok(undefined);
+}
+
+/**
+ * Valida longitud máxima de string
+ */
+export function validateMaxLength(
+  value: string,
+  maxLength: number,
+  fieldName: string,
+  errorClass: new (message: string) => Error
+): Result<void, Error> {
+  if (value.length > maxLength) {
+    return Result.fail(
+      new errorClass(`${fieldName} must not exceed ${maxLength} characters`)
+    );
+  }
+  return Result.ok(undefined);
+}
+
+/**
  * Valida que un objeto cumpla con predicado custom
  */
 export function validateWithPredicate<T>(
