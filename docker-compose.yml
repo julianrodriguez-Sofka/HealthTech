@@ -122,6 +122,9 @@ services:
       WEBSOCKET_PORT: 3001
       CORS_ORIGIN: "*"
       
+      # JWT Authentication
+      JWT_SECRET: healthtech-dev-secret-key-2026
+      
       # Logging
       LOG_LEVEL: info
     ports:
@@ -163,7 +166,8 @@ services:
     ports:
       - "3003:3003"  # Vite dev server
     environment:
-      - VITE_API_URL=http://localhost:3000
+      - VITE_API_URL=http://localhost:3000/api/v1
+      - VITE_BACKEND_URL=http://app:3000
     depends_on:
       - app
     volumes:

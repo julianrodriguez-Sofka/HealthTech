@@ -4,20 +4,31 @@
  * REST endpoints básicos para gestión de pacientes
  * Endpoints:
  * - GET /api/v1/patients - Listar todos los pacientes
- * - POST /api/v1/patients - Crear nuevo paciente
+ * - POST /api/v1/patients - Crear nuevo paciente (USA RegisterPatientUseCase + Observer Pattern)
  * - GET /api/v1/patients/:id - Obtener paciente por ID
  * - PUT /api/v1/patients/:id - Actualizar paciente completo
  * - DELETE /api/v1/patients/:id - Eliminar paciente
+ *
+ * HUMAN REVIEW: POST ahora usa RegisterPatientUseCase que implementa el patrón Observer
+ * para notificar a médicos disponibles cuando se registra un nuevo paciente (requisito HU.md)
  */
 
 import { Router, Request, Response } from 'express';
 import { IPatientRepository } from '@domain/repositories/IPatientRepository';
+import { IVitalsRepository } from '@domain/repositories/IVitalsRepository';
 import { Patient, PatientPriority, PatientStatus } from '@domain/entities/Patient';
+import { RegisterPatientUseCase } from '@application/use-cases/RegisterPatientUseCase';
+import { IObservable } from '@domain/observers/IObserver';
+import { TriageEvent } from '@domain/observers/TriageEvents';
 
 export class PatientRoutes {
   private router: Router;
 
-  constructor(private readonly patientRepository: IPatientRepository) {
+  constructor(
+    private readonly patientRepository: IPatientRepository,
+    private readonly vitalsRepository: IVitalsRepository,
+    private readonly eventBus: IObservable<TriageEvent>
+  ) {
     this.router = Router();
     this.configureRoutes();
   }
@@ -60,11 +71,14 @@ export class PatientRoutes {
 
   /**
    * POST /api/v1/patients
-   * Crear nuevo paciente
+   * Crear nuevo paciente usando RegisterPatientUseCase (con patrón Observer)
+   *
+   * HUMAN REVIEW: Este endpoint ahora implementa el requisito obligatorio de HU.md:
+   * "Una vez registrado, el sistema envía una alerta a todos los Médicos disponibles."
    */
   private async createPatient(req: Request, res: Response): Promise<void> {
     try {
-      const { name, age, gender, symptoms, vitals, priority, manualPriority } = req.body;
+      const { name, age, gender, symptoms, vitals } = req.body;
 
       // Validación básica
       if (!name || !age || !gender || !vitals) {
@@ -93,36 +107,66 @@ export class PatientRoutes {
         return;
       }
 
-      // Crear paciente usando domain entity
-      const patient = Patient.create({
-        name,
+      // Separar firstName y lastName del campo name
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || 'Unknown';
+      const lastName = nameParts.slice(1).join(' ') || 'Unknown';
+
+      // HUMAN REVIEW: Usar RegisterPatientUseCase que implementa el patrón Observer
+      const useCase = new RegisterPatientUseCase(
+        this.patientRepository,
+        this.vitalsRepository,
+        this.eventBus
+      );
+
+      // Ejecutar el caso de uso
+      const result = await useCase.execute({
+        firstName,
+        lastName,
+        age,
+        gender,
+        symptoms,
+        vitals: {
+          heartRate: vitals.heartRate,
+          temperature: vitals.temperature,
+          oxygenSaturation: vitals.oxygenSaturation,
+          bloodPressure: vitals.bloodPressure,
+          respiratoryRate: vitals.respiratoryRate || 16,
+          consciousnessLevel: vitals.consciousnessLevel,
+          painLevel: vitals.painLevel
+        },
+        registeredBy: req.body.registeredBy || 'system'
+      });
+
+      // Manejar resultado del use case
+      if (result.isFailure) {
+        console.error('[PatientRoutes] Failed to register patient:', result.error);
+        res.status(400).json({
+          success: false,
+          error: result.error.message
+        });
+        return;
+      }
+
+      const output = result.value;
+
+      console.log(`[Patient Registered] ID: ${output.id}, Priority: P${output.priority}, Name: ${output.firstName} ${output.lastName}`);
+      console.log(`✅ Observer pattern executed - Doctors have been notified`);
+
+      // Retornar paciente registrado en formato compatible con frontend
+      res.status(201).json({
+        id: output.id,
+        name: `${output.firstName} ${output.lastName}`,
+        firstName: output.firstName,
+        lastName: output.lastName,
         age,
         gender,
         symptoms,
         vitals,
-        priority: priority || PatientPriority.P5,
-        manualPriority: manualPriority || undefined,
-        arrivalTime: new Date(),
+        priority: output.priority,
+        registeredAt: output.registeredAt,
+        status: 'waiting'
       });
-
-      // HUMAN REVIEW: Calcular prioridad automática si no se especificó manualPriority
-      if (!manualPriority) {
-        const calculatedPriority = this.calculatePriority(vitals);
-        if (calculatedPriority !== patient.priority) {
-          // Solo actualizar si la calculada es más crítica
-          if (calculatedPriority < patient.priority) {
-            patient.setManualPriority(calculatedPriority);
-          }
-        }
-      }
-
-      // Persistir
-      await this.patientRepository.save(patient);
-
-      console.log(`[Patient Created] ID: ${patient.id}, Priority: P${patient.priority}, Name: ${patient.name}`);
-
-      // Frontend espera objeto directo
-      res.status(201).json(patient);
     } catch (error: any) {
       console.error('[PatientRoutes] Error creating patient:', error);
       res.status(400).json({

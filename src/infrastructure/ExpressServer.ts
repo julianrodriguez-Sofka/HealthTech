@@ -19,12 +19,18 @@ import { WebSocketServer } from './sockets/websocket-server';
 import { UserRoutes } from './api/UserRoutes';
 import { PatientRoutes } from './api/PatientRoutes';
 import { PatientManagementRoutes } from './api/PatientManagementRoutes';
+import { authRouter } from './api/AuthRoutes';
+import { AuthService } from '../application/services/AuthService';
 import {
   InMemoryUserRepository,
   InMemoryDoctorRepository,
   InMemoryPatientCommentRepository,
-  InMemoryPatientRepository
+  InMemoryPatientRepository,
+  InMemoryVitalsRepository
 } from './persistence';
+import { TriageEventBus } from '@domain/observers/TriageEventBus';
+import { DoctorNotificationObserver } from '@application/observers/DoctorNotificationObserver';
+import { MessagingService } from './messaging/MessagingService';
 
 /**
  * Clase principal del servidor Express
@@ -42,6 +48,11 @@ class ExpressServer {
   private doctorRepository: InMemoryDoctorRepository;
   private patientCommentRepository: InMemoryPatientCommentRepository;
   private patientRepository: InMemoryPatientRepository;
+  private vitalsRepository: InMemoryVitalsRepository;
+  
+  // HUMAN REVIEW: Observer pattern implementation
+  private eventBus: TriageEventBus;
+  private doctorNotificationObserver: DoctorNotificationObserver | null = null;
 
   constructor(port: number = 3000) {
     this.app = express();
@@ -54,6 +65,10 @@ class ExpressServer {
     this.doctorRepository = new InMemoryDoctorRepository();
     this.patientCommentRepository = new InMemoryPatientCommentRepository();
     this.patientRepository = new InMemoryPatientRepository();
+    this.vitalsRepository = new InMemoryVitalsRepository();
+    
+    // Initialize Observer pattern components
+    this.eventBus = new TriageEventBus();
 
     this.setupMiddleware();
     this.setupSwagger();
@@ -187,6 +202,11 @@ class ExpressServer {
       });
     });
 
+    // HUMAN REVIEW: Authentication Routes
+    const jwtSecret = process.env.JWT_SECRET || 'healthtech-dev-secret-key-2026';
+    const authService = new AuthService(this.userRepository, jwtSecret);
+    this.app.use('/api/v1/auth', authRouter(authService));
+
     // HUMAN REVIEW: User Management Routes
     const userRoutes = new UserRoutes(
       this.userRepository,
@@ -194,8 +214,12 @@ class ExpressServer {
     );
     this.app.use('/api/v1/users', userRoutes.getRouter());
 
-    // HUMAN REVIEW: Patient CRUD Routes
-    const patientRoutes = new PatientRoutes(this.patientRepository);
+    // HUMAN REVIEW: Patient CRUD Routes (with Observer pattern)
+    const patientRoutes = new PatientRoutes(
+      this.patientRepository,
+      this.vitalsRepository,
+      this.eventBus
+    );
     const patientRouter = patientRoutes.getRouter();
     
     // HUMAN REVIEW: Patient Management Routes (enhanced endpoints)
@@ -401,9 +425,10 @@ class ExpressServer {
    *
    * HUMAN REVIEW: Inicialización secuencial de dependencias externas:
    * 1. RabbitMQ (opcional - no falla si no está disponible)
-   * 2. Database (PostgreSQL connection pool)
-   * 3. HealthTech App (lógica de negocio)
-   * 4. Express Server (HTTP)
+   * 2. Observer Pattern (registrar DoctorNotificationObserver en EventBus)
+   * 3. Database (PostgreSQL connection pool)
+   * 4. HealthTech App (lógica de negocio)
+   * 5. Express Server (HTTP)
    */
   public async start(): Promise<void> {
     try {
@@ -418,20 +443,30 @@ class ExpressServer {
         });
         await this.rabbitMQ.connect();
         console.log('✅ RabbitMQ connection initialized');
+        
+        // 2. Inicializar Observer Pattern (si RabbitMQ está disponible)
+        // HUMAN REVIEW: Este es el requisito obligatorio de HU.md - Observer notifica a médicos
+        const messagingService = new MessagingService(this.rabbitMQ);
+        
+        this.doctorNotificationObserver = new DoctorNotificationObserver(messagingService);
+        this.eventBus.subscribe(this.doctorNotificationObserver);
+        
+        console.log('✅ Observer pattern initialized - DoctorNotificationObserver subscribed to EventBus');
       } catch (error) {
         console.warn('⚠️ RabbitMQ not available. System will run in degraded mode:', error);
+        console.warn('⚠️ Observer pattern disabled - notifications will NOT be sent');
         this.rabbitMQ = null;
       }
 
-      // 2. Inicializar Database (PostgreSQL)
+      // 3. Inicializar Database (PostgreSQL)
       // HUMAN REVIEW: En producción, verificar que las credenciales vengan de secrets seguros
       console.log('✅ Database connection pool initialized (simulated)');
 
-      // 3. Inicializar aplicación HealthTech
+      // 4. Inicializar aplicación HealthTech
       await this.healthTechApp.initialize();
       console.log('✅ HealthTech application initialized');
 
-      // 4. Inicializar WebSocket Server
+      // 5. Inicializar WebSocket Server
       this.wsServer = new WebSocketServer({
         port: this.port,
         corsOrigin: process.env.CORS_ORIGIN || 'http://localhost',
@@ -441,7 +476,7 @@ class ExpressServer {
       this.wsServer.initialize(this.httpServer);
       console.log('✅ WebSocket server initialized');
 
-      // 5. Iniciar servidor HTTP
+      // 6. Iniciar servidor HTTP
       this.httpServer.listen(this.port, () => {
         console.log('\n🚀 HealthTech Triage API Server');
         console.log('================================');
@@ -453,6 +488,11 @@ class ExpressServer {
         console.log('\n🏗️  Architecture: Clean Architecture + SOLID');
         console.log(`📦 Node.js: ${process.version}`);
         console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+        if (this.doctorNotificationObserver) {
+          console.log(`🔔 Observer Pattern: ACTIVE (${this.eventBus.getObserverCount()} observers registered)`);
+        } else {
+          console.log(`🔔 Observer Pattern: INACTIVE (RabbitMQ not available)`);
+        }
         console.log('================================\n');
       });
 

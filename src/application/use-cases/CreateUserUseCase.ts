@@ -12,10 +12,12 @@ import { Doctor, MedicalSpecialty } from '../../domain/entities/Doctor';
 import { Nurse, NurseArea } from '../../domain/entities/Nurse';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
+import { AuthService } from '../services/AuthService';
 
 export interface CreateUserDTO {
   email: string;
   name: string;
+  password: string;  // Plain password - will be hashed before storage
   role: UserRole;
   // Doctor-specific fields
   specialty?: MedicalSpecialty;
@@ -43,6 +45,7 @@ export interface CreateUserResult {
 export class CreateUserUseCase {
   constructor(
     private readonly userRepository: IUserRepository,
+    private readonly authService: AuthService,
     private readonly doctorRepository?: IDoctorRepository
   ) {}
 
@@ -59,6 +62,9 @@ export class CreateUserUseCase {
           error: 'Email already registered',
         };
       }
+
+      // Hash password
+      const passwordHash = await this.authService.hashPassword(dto.password);
 
       // Create user based on role
       let user: User;
@@ -86,6 +92,11 @@ export class CreateUserUseCase {
       // Persist user
       await this.userRepository.save(user);
 
+      // Save password hash
+      if ('savePasswordHash' in this.userRepository) {
+        await (this.userRepository as any).savePasswordHash(user.id, passwordHash);
+      }
+
       return {
         success: true,
         userId: user.id,
@@ -108,6 +119,10 @@ export class CreateUserUseCase {
 
     if (!dto.name || dto.name.trim().length < 2) {
       throw new Error('Name must be at least 2 characters');
+    }
+
+    if (!dto.password || dto.password.length < 6) {
+      throw new Error('Password must be at least 6 characters');
     }
 
     if (!Object.values(UserRole).includes(dto.role)) {

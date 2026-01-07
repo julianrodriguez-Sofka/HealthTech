@@ -88,7 +88,11 @@ export class AuthService {
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly jwtSecret: string
-  ) {}
+  ) {
+    if (!jwtSecret || jwtSecret.trim() === '') {
+      throw new Error('JWT_SECRET is required for AuthService');
+    }
+  }
 
   /**
    * Authenticate user and generate tokens

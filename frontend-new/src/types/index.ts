@@ -1,8 +1,8 @@
 // User and Authentication Types
 export enum UserRole {
-  NURSE = 'NURSE',
-  DOCTOR = 'DOCTOR',
-  ADMIN = 'ADMIN'
+  NURSE = 'nurse',
+  DOCTOR = 'doctor',
+  ADMIN = 'admin'
 }
 
 export interface User {

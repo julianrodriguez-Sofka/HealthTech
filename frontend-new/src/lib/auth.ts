@@ -1,69 +1,48 @@
 import { User, UserRole, LoginCredentials, AuthResponse } from '@/types';
+import { apiClient } from './apiClient';
 
 const STORAGE_KEY = 'healthtech_auth_token';
 const USER_KEY = 'healthtech_user';
 
-// Mock users for demonstration
-const MOCK_USERS: Record<string, User> = {
-  'ana.garcia@healthtech.com': {
-    id: 'nurse-001',
-    name: 'Ana García',
-    email: 'ana.garcia@healthtech.com',
-    role: UserRole.NURSE,
-    department: 'Urgencias',
-    avatar: 'https://i.pravatar.cc/150?img=47'
-  },
-  'carlos.mendoza@healthtech.com': {
-    id: 'doctor-001',
-    name: 'Dr. Carlos Mendoza',
-    email: 'carlos.mendoza@healthtech.com',
-    role: UserRole.DOCTOR,
-    specialization: 'Medicina de Urgencias',
-    avatar: 'https://i.pravatar.cc/150?img=12'
-  },
-  'admin@healthtech.com': {
-    id: 'admin-001',
-    name: 'María Rodríguez',
-    email: 'admin@healthtech.com',
-    role: UserRole.ADMIN,
-    department: 'Administración',
-    avatar: 'https://i.pravatar.cc/150?img=28'
-  }
-};
-
-function generateMockToken(user: User): string {
-  const payload = {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-    iat: Date.now() / 1000,
-    exp: Date.now() / 1000 + 8 * 60 * 60 // 8 hours
-  };
-  
-  const encodedPayload = btoa(JSON.stringify(payload));
-  return `mock.${encodedPayload}.signature`;
-}
-
+// Login function - validates credentials with backend
 export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  
-  const mockUser = MOCK_USERS[credentials.email];
-  
-  if (!mockUser || mockUser.role !== credentials.role) {
-    throw new Error('Credenciales inválidas');
+  try {
+    const response = await apiClient.post('/auth/login', {
+      email: credentials.email,
+      password: credentials.password
+    });
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Credenciales inválidas');
+    }
+
+    const { accessToken, user: userData } = response.data;
+    
+    // Map backend user to frontend User type
+    const user: User = {
+      id: userData.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role as UserRole,
+      department: (userData as any).department,
+      specialization: (userData as any).specialization,
+      avatar: `https://i.pravatar.cc/150?u=${userData.email}`
+    };
+    
+    // Persist in localStorage
+    localStorage.setItem(STORAGE_KEY, accessToken);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    
+    return {
+      user,
+      token: accessToken
+    };
+  } catch (error: any) {
+    if (error.response?.data?.error) {
+      throw new Error(error.response.data.error);
+    }
+    throw new Error(error.message || 'Error al iniciar sesión');
   }
-  
-  const token = generateMockToken(mockUser);
-  
-  // Persist in localStorage
-  localStorage.setItem(STORAGE_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
-  
-  return {
-    user: mockUser,
-    token
-  };
 }
 
 export function logout(): void {
@@ -87,12 +66,18 @@ export function getStoredUser(): User | null {
 }
 
 export function isTokenValid(token: string): boolean {
+  if (!token) return false;
+  
   try {
+    // Parse JWT token
     const parts = token.split('.');
     if (parts.length !== 3) return false;
     
     const payloadStr = atob(parts[1]);
     const payload = JSON.parse(payloadStr);
+    
+    // Check expiration
+    if (!payload.exp) return false;
     
     const now = Date.now() / 1000;
     return payload.exp > now;

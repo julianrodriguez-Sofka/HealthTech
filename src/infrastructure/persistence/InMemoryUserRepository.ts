@@ -19,22 +19,36 @@ import { User, UserRole, UserStatus } from '../../domain/entities/User';
  */
 export class InMemoryUserRepository implements IUserRepository {
   private users: Map<string, User> = new Map();
+  // HUMAN REVIEW: Store password hashes securely
+  private passwordHashes: Map<string, string> = new Map();
 
   async save(user: User): Promise<void> {
     this.users.set(user.id, user);
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.users.get(id) || null;
+    const user = this.users.get(id) || null;
+    if (user) {
+      // Attach passwordHash for authentication
+      (user as any).passwordHash = this.passwordHashes.get(user.id);
+    }
+    return user;
   }
 
   async findByEmail(email: string): Promise<User | null> {
     for (const user of this.users.values()) {
       if (user.email === email) {
+        // Attach passwordHash for authentication
+        (user as any).passwordHash = this.passwordHashes.get(user.id);
         return user;
       }
     }
     return null;
+  }
+
+  // New method to save password hash
+  async savePasswordHash(userId: string, passwordHash: string): Promise<void> {
+    this.passwordHashes.set(userId, passwordHash);
   }
 
   async findAll(filters?: { role?: UserRole; status?: UserStatus }): Promise<User[]> {
@@ -73,6 +87,7 @@ export class InMemoryUserRepository implements IUserRepository {
   // Helper methods for testing
   clear(): void {
     this.users.clear();
+    this.passwordHashes.clear();
   }
 
   size(): number {

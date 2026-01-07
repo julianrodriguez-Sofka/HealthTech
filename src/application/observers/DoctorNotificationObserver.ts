@@ -5,8 +5,8 @@
  * REQUISITO OBLIGATORIO HU.md: "Implementación del patrón Observer para notificar
  * automáticamente a los Médicos disponibles sobre 'Nuevos pacientes' registrados"
  *
- * HUMAN REVIEW: Esta implementación debe integrarse con el sistema de notificaciones
- * real (WebSockets, Push Notifications, Email, SMS) según los requisitos de producción.
+ * HUMAN REVIEW: Implementación completa del patrón Observer que publica mensajes
+ * a RabbitMQ para notificar a médicos disponibles sobre eventos críticos de triage.
  */
 
 import { IObserver } from '@domain/observers/IObserver';
@@ -18,22 +18,7 @@ import {
   CaseReassignedEvent,
 } from '@domain/observers/TriageEvents';
 import { Logger } from '@shared/Logger';
-
-/**
- * Interfaz para el servicio de notificaciones externo
- * HUMAN REVIEW: Dependency Inversion - depende de abstracción, no implementación
- */
-export interface INotificationService {
-  /**
-   * Notifica a un médico específico
-   */
-  notifyDoctor(doctorId: string, message: string, priority: 'high' | 'medium' | 'low'): Promise<void>;
-
-  /**
-   * Notifica a todos los médicos disponibles
-   */
-  notifyAllAvailableDoctors(message: string, priority: 'high' | 'medium' | 'low'): Promise<void>;
-}
+import { IMessagingService } from '@application/interfaces';
 
 /**
  * Observer que maneja notificaciones a médicos basado en eventos de triage
@@ -41,12 +26,13 @@ export interface INotificationService {
  * SOLID Principles:
  * - SRP: Solo responsable de notificar a médicos cuando ocurren eventos
  * - OCP: Extensible - podemos agregar nuevos tipos de eventos sin modificar código existente
- * - DIP: Depende de INotificationService (abstracción), no de implementación concreta
+ * - DIP: Depende de IMessagingService (abstracción), no de implementación concreta
  */
 export class DoctorNotificationObserver implements IObserver<TriageEvent> {
   private logger: Logger;
+  private readonly HIGH_PRIORITY_QUEUE = 'triage_high_priority';
 
-  constructor(private readonly notificationService: INotificationService) {
+  constructor(private readonly messagingService: IMessagingService) {
     this.logger = new Logger('DoctorNotificationObserver');
   }
 
@@ -93,20 +79,41 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
    */
   private async handlePatientRegistered(event: PatientRegisteredEvent): Promise<void> {
     const priorityLabel = this.getPriorityLabel(event.priority);
-    const message = `🚨 NUEVO PACIENTE - Prioridad ${priorityLabel}\n` +
-      `Paciente: ${event.patientName}\n` +
-      `ID: ${event.patientId}\n` +
-      `Síntomas: ${event.symptoms.join(', ')}\n` +
-      `Hora de registro: ${event.occurredAt.toLocaleTimeString()}`;
+    const message = {
+      eventType: 'PATIENT_REGISTERED',
+      patientId: event.patientId,
+      patientName: event.patientName,
+      priority: event.priority,
+      priorityLabel,
+      symptoms: event.symptoms,
+      registeredAt: event.occurredAt.toISOString(),
+      registeredBy: event.registeredBy
+    };
 
-    const notificationPriority = event.priority <= 2 ? 'high' : event.priority === 3 ? 'medium' : 'low';
-
-    await this.notificationService.notifyAllAvailableDoctors(message, notificationPriority);
-
-    this.logger.info('Doctors notified about new patient', {
+    this.logger.info('[DoctorNotificationObserver] Publishing patient registered event to RabbitMQ', {
       patientId: event.patientId,
       priority: event.priority,
+      queue: this.HIGH_PRIORITY_QUEUE
     });
+
+    // HUMAN REVIEW: Publicar en cola de RabbitMQ
+    const result = await this.messagingService.publishToQueue(
+      this.HIGH_PRIORITY_QUEUE,
+      JSON.stringify(message)
+    );
+
+    if (result.isSuccess) {
+      this.logger.info('[DoctorNotificationObserver] ✅ Doctors notified about new patient via RabbitMQ', {
+        patientId: event.patientId,
+        priority: event.priority,
+        queue: this.HIGH_PRIORITY_QUEUE
+      });
+    } else {
+      this.logger.error('[DoctorNotificationObserver] ❌ Failed to publish patient registered event', {
+        error: result.error,
+        patientId: event.patientId
+      });
+    }
   }
 
   /**
@@ -116,19 +123,39 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
   private async handlePriorityChanged(event: PatientPriorityChangedEvent): Promise<void> {
     // Solo notificar si la prioridad se volvió más crítica
     if (event.newPriority < event.oldPriority) {
-      const message = `⚠️ CAMBIO DE PRIORIDAD\n` +
-        `Paciente: ${event.patientName}\n` +
-        `Prioridad anterior: ${this.getPriorityLabel(event.oldPriority)}\n` +
-        `Nueva prioridad: ${this.getPriorityLabel(event.newPriority)}\n` +
-        `Razón: ${event.reason}`;
-
-      await this.notificationService.notifyAllAvailableDoctors(message, 'high');
-
-      this.logger.warn('Priority increased - doctors notified', {
+      const message = {
+        eventType: 'PRIORITY_CHANGED',
         patientId: event.patientId,
+        patientName: event.patientName,
         oldPriority: event.oldPriority,
         newPriority: event.newPriority,
+        reason: event.reason,
+        changedAt: event.occurredAt.toISOString()
+      };
+
+      this.logger.info('[DoctorNotificationObserver] Publishing priority changed event to RabbitMQ', {
+        patientId: event.patientId,
+        oldPriority: event.oldPriority,
+        newPriority: event.newPriority
       });
+
+      const result = await this.messagingService.publishToQueue(
+        this.HIGH_PRIORITY_QUEUE,
+        JSON.stringify(message)
+      );
+
+      if (result.isSuccess) {
+        this.logger.warn('[DoctorNotificationObserver] ✅ Priority increased - doctors notified via RabbitMQ', {
+          patientId: event.patientId,
+          oldPriority: event.oldPriority,
+          newPriority: event.newPriority,
+        });
+      } else {
+        this.logger.error('[DoctorNotificationObserver] ❌ Failed to publish priority changed event', {
+          error: result.error,
+          patientId: event.patientId
+        });
+      }
     }
   }
 
@@ -142,41 +169,74 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
     if (event.oxygenSaturation !== undefined) vitalsInfo.push(`SpO2: ${event.oxygenSaturation}%`);
     if (event.temperature !== undefined) vitalsInfo.push(`Temp: ${event.temperature}°C`);
 
-    const message = `🔴 SIGNOS VITALES CRÍTICOS\n` +
-      `Paciente: ${event.patientName}\n` +
-      `Vitales anormales: ${vitalsInfo.join(' | ')}\n` +
-      `⏰ Requiere atención INMEDIATA`;
+    const message = {
+      eventType: 'CRITICAL_VITALS_DETECTED',
+      patientId: event.patientId,
+      patientName: event.patientName,
+      vitals: vitalsInfo,
+      heartRate: event.heartRate,
+      oxygenSaturation: event.oxygenSaturation,
+      temperature: event.temperature,
+      assignedDoctorId: event.assignedDoctorId,
+      detectedAt: event.occurredAt.toISOString()
+    };
 
-    // Si hay un médico asignado, notificarlo directamente también
-    if (event.assignedDoctorId) {
-      await this.notificationService.notifyDoctor(event.assignedDoctorId, message, 'high');
-    }
-
-    // Y notificar a todos los disponibles por si el médico asignado no responde
-    await this.notificationService.notifyAllAvailableDoctors(message, 'high');
-
-    this.logger.error('CRITICAL VITALS - all doctors alerted', {
+    this.logger.error('[DoctorNotificationObserver] 🔴 CRITICAL VITALS - Publishing to RabbitMQ', {
       patientId: event.patientId,
       vitals: { heartRate: event.heartRate, oxygenSaturation: event.oxygenSaturation },
     });
+
+    const result = await this.messagingService.publishToQueue(
+      this.HIGH_PRIORITY_QUEUE,
+      JSON.stringify(message)
+    );
+
+    if (result.isSuccess) {
+      this.logger.error('[DoctorNotificationObserver] ✅ CRITICAL VITALS - all doctors alerted via RabbitMQ', {
+        patientId: event.patientId,
+      });
+    } else {
+      this.logger.error('[DoctorNotificationObserver] ❌ Failed to publish critical vitals event', {
+        error: result.error,
+        patientId: event.patientId
+      });
+    }
   }
 
   /**
    * Maneja reasignación de caso a nuevo médico
    */
   private async handleCaseReassigned(event: CaseReassignedEvent): Promise<void> {
-    const message = `📋 CASO ASIGNADO A USTED\n` +
-      `Paciente: ${event.patientName}\n` +
-      `ID: ${event.patientId}\n` +
-      `Razón: ${event.reason}`;
-
-    // Notificar solo al nuevo médico asignado
-    await this.notificationService.notifyDoctor(event.newDoctorId, message, 'medium');
-
-    this.logger.info('Case reassigned - new doctor notified', {
+    const message = {
+      eventType: 'CASE_REASSIGNED',
       patientId: event.patientId,
+      patientName: event.patientName,
       newDoctorId: event.newDoctorId,
+      reason: event.reason,
+      reassignedAt: event.occurredAt.toISOString()
+    };
+
+    this.logger.info('[DoctorNotificationObserver] Publishing case reassigned event to RabbitMQ', {
+      patientId: event.patientId,
+      newDoctorId: event.newDoctorId
     });
+
+    const result = await this.messagingService.publishToQueue(
+      this.HIGH_PRIORITY_QUEUE,
+      JSON.stringify(message)
+    );
+
+    if (result.isSuccess) {
+      this.logger.info('[DoctorNotificationObserver] ✅ Case reassigned - doctor notified via RabbitMQ', {
+        patientId: event.patientId,
+        newDoctorId: event.newDoctorId,
+      });
+    } else {
+      this.logger.error('[DoctorNotificationObserver] ❌ Failed to publish case reassigned event', {
+        error: result.error,
+        patientId: event.patientId
+      });
+    }
   }
 
   /**

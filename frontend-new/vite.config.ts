@@ -15,15 +15,18 @@ export default defineConfig({
     }
   },
   server: {
-    port: 3001,
+    port: 3003,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false
       },
       '/socket.io': {
-        target: 'http://localhost:3000',
-        ws: true
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
+        ws: true,
+        changeOrigin: true
       }
     }
   }

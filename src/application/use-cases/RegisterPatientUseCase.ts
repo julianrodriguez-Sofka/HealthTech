@@ -72,7 +72,6 @@ export class RegisterPatientUseCase {
   constructor(
     private readonly patientRepository: IPatientRepository,
     private readonly vitalsRepository: IVitalsRepository,
-    private readonly triageEngine: TriageEngine,
     private readonly eventBus: IObservable<TriageEvent>
   ) {
     this.logger = new Logger('RegisterPatientUseCase');
@@ -97,7 +96,7 @@ export class RegisterPatientUseCase {
 
       // STEP 2: Calcular prioridad usando TriageEngine
       // HUMAN REVIEW: Este es el core del sistema de triage automatizado
-      const priority = this.triageEngine.calculatePriority({
+      const priority = TriageEngine.calculatePriority({
         heartRate: input.vitals.heartRate,
         temperature: input.vitals.temperature,
         oxygenSaturation: input.vitals.oxygenSaturation,

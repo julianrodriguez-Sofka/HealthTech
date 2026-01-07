@@ -12,18 +12,23 @@
 
 import { Router, Request, Response } from 'express';
 import { CreateUserUseCase } from '../../application/use-cases/CreateUserUseCase';
+import { AuthService } from '../../application/services/AuthService';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { UserRole, UserStatus } from '../../domain/entities/User';
 
 export class UserRoutes {
   private router: Router;
+  private authService: AuthService;
 
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly doctorRepository: IDoctorRepository
   ) {
     this.router = Router();
+    // Initialize AuthService with userRepository and JWT secret
+    const jwtSecret = process.env.JWT_SECRET || 'healthtech-dev-secret-key-2026';
+    this.authService = new AuthService(userRepository, jwtSecret);
     this.configureRoutes();
   }
 
@@ -110,12 +115,14 @@ export class UserRoutes {
       // Ejecutar caso de uso
       const createUserUseCase = new CreateUserUseCase(
         this.userRepository,
+        this.authService,
         this.doctorRepository
       );
 
       const result = await createUserUseCase.execute({
         email,
         name,
+        password: req.body.password || 'HealthTech2026!', // Default password if not provided
         role: role as UserRole,
         specialty,
         licenseNumber,

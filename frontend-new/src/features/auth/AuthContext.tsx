@@ -48,17 +48,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.user);
       setToken(response.token);
 
-      // Redirect based on role
-      switch (response.user.role) {
-        case 'NURSE':
+      // Redirect based on role (case-insensitive comparison)
+      const role = response.user.role.toLowerCase();
+      switch (role) {
+        case 'nurse':
           navigate('/nurse');
           break;
-        case 'DOCTOR':
+        case 'doctor':
           navigate('/doctor');
           break;
-        case 'ADMIN':
+        case 'admin':
           navigate('/admin');
           break;
+        default:
+          navigate('/');
       }
     } catch (error) {
       throw error;
