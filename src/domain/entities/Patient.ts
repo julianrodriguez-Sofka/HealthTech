@@ -240,20 +240,20 @@ export class Patient {
       throw new Error('Patient is already assigned to a doctor');
     }
 
-    this.props.assignedDoctorId = doctorId;
-    this.props.assignedDoctorName = doctorName;
-    this.props.status = PatientStatus.IN_PROGRESS;
-    this.props.treatmentStartTime = new Date();
-    this.props.updatedAt = new Date();
+    (this.props as any).assignedDoctorId = doctorId;
+    (this.props as any).assignedDoctorName = doctorName;
+    (this.props as any).status = PatientStatus.IN_PROGRESS;
+    (this.props as any).treatmentStartTime = new Date();
+    (this.props as any).updatedAt = new Date();
   }
 
   /**
    * Reassign patient to different doctor
    */
   reassignDoctor(doctorId: string, doctorName: string): void {
-    this.props.assignedDoctorId = doctorId;
-    this.props.assignedDoctorName = doctorName;
-    this.props.updatedAt = new Date();
+    (this.props as any).assignedDoctorId = doctorId;
+    (this.props as any).assignedDoctorName = doctorName;
+    (this.props as any).updatedAt = new Date();
   }
 
   /**
@@ -264,12 +264,12 @@ export class Patient {
       throw new Error(`Invalid status: ${newStatus}`);
     }
 
-    this.props.status = newStatus;
-    this.props.updatedAt = new Date();
+    (this.props as any).status = newStatus;
+    (this.props as any).updatedAt = new Date();
 
     // Set discharge time when discharged
     if (newStatus === PatientStatus.DISCHARGED && !this.props.dischargeTime) {
-      this.props.dischargeTime = new Date();
+      (this.props as any).dischargeTime = new Date();
     }
 
     // HUMAN REVIEW: Consider emitting StatusChangedEvent for audit
@@ -284,16 +284,16 @@ export class Patient {
       throw new Error(`Invalid priority: ${priority}`);
     }
 
-    this.props.manualPriority = priority;
-    this.props.updatedAt = new Date();
+    (this.props as any).manualPriority = priority;
+    (this.props as any).updatedAt = new Date();
   }
 
   /**
    * Clear manual priority (use automatic)
    */
   clearManualPriority(): void {
-    this.props.manualPriority = undefined;
-    this.props.updatedAt = new Date();
+    (this.props as any).manualPriority = undefined;
+    (this.props as any).updatedAt = new Date();
   }
 
   /**
@@ -304,8 +304,8 @@ export class Patient {
       throw new Error('Comment patient ID does not match');
     }
 
-    this.props.comments.push(comment);
-    this.props.updatedAt = new Date();
+    (this.props as any).comments.push(comment);
+    (this.props as any).updatedAt = new Date();
   }
 
   /**
@@ -321,12 +321,12 @@ export class Patient {
    * Update vital signs
    */
   updateVitals(newVitals: Partial<VitalSigns>): void {
-    this.props.vitals = {
+    (this.props as any).vitals = {
       ...this.props.vitals,
       ...newVitals,
     };
     this.validateVitalSigns();
-    this.props.updatedAt = new Date();
+    (this.props as any).updatedAt = new Date();
   }
 
   /**
