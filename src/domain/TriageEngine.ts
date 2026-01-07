@@ -93,11 +93,19 @@ export class TriageEngine {
    *    - Shock, sepsis, arritmias malignas
    *    - Requiere evaluación cardiovascular inmediata
    *
-   * 2. Hipertermia extrema (T > 40°C):
+   * 2. Bradicardia severa (FC < 40 bpm):
+   *    - Bloqueo AV completo, hipotermia, intoxicación
+   *    - Requiere monitoreo cardíaco inmediato
+   *
+   * 3. Hipertermia extrema (T > 40°C):
    *    - Golpe de calor, sepsis severa
    *    - Riesgo de daño multiorgánico
    *
-   * 3. Hipoxemia severa (SpO2 < 90%):
+   * 4. Hipotermia severa (T < 35°C):
+   *    - Exposición ambiental, shock séptico, hipotiroidismo
+   *    - Riesgo de arritmias cardíacas fatales
+   *
+   * 5. Hipoxemia severa (SpO2 < 90%):
    *    - Insuficiencia respiratoria aguda
    *    - Riesgo de daño cerebral por hipoxia
    */
@@ -113,6 +121,16 @@ export class TriageEngine {
       justification: 'Frecuencia cardíaca superior a 120 bpm indica compromiso hemodinámico'
     },
     {
+      name: 'Bradicardia Severa',
+      priority: 1,
+      predicate: (vitals: TriageVitals): boolean => {
+        // HUMAN REVIEW: Umbral de 40 bpm indica bradicardia sintomática
+        // Requiere evaluación inmediata para descartar bloqueos cardíacos
+        return vitals.heartRate < 40;
+      },
+      justification: 'Frecuencia cardíaca inferior a 40 bpm indica bradicardia severa con riesgo vital'
+    },
+    {
       name: 'Hipertermia Extrema',
       priority: 1,
       predicate: (vitals: TriageVitals): boolean => {
@@ -121,6 +139,16 @@ export class TriageEngine {
         return vitals.temperature > 40;
       },
       justification: 'Temperatura superior a 40°C indica riesgo de daño multiorgánico'
+    },
+    {
+      name: 'Hipotermia Severa',
+      priority: 1,
+      predicate: (vitals: TriageVitals): boolean => {
+        // HUMAN REVIEW: Umbral de 35°C define hipotermia moderada-severa
+        // Debajo de este valor, riesgo de arritmias ventriculares fatales
+        return vitals.temperature < 35;
+      },
+      justification: 'Temperatura inferior a 35°C indica hipotermia severa con riesgo de arritmias fatales'
     },
     {
       name: 'Hipoxemia Severa',
