@@ -141,8 +141,8 @@ export class User {
     if (!Object.values(UserStatus).includes(newStatus)) {
       throw new Error(`Invalid status: ${newStatus}`);
     }
-    this.props.status = newStatus;
-    this.props.updatedAt = new Date();
+    (this.props as any).status = newStatus;
+    (this.props as any).updatedAt = new Date();
   }
 
   /**

@@ -51,7 +51,7 @@ export class Nurse extends User {
       email: params.email,
       name: params.name,
       role: UserRole.NURSE,
-      status: UserStatus.ACTIVE,
+      status: params.status ?? UserStatus.ACTIVE,
       createdAt: now,
       updatedAt: now,
     };

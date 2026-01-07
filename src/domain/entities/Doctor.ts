@@ -58,7 +58,7 @@ export class Doctor extends User {
       email: params.email,
       name: params.name,
       role: UserRole.DOCTOR,
-      status: UserStatus.ACTIVE,
+      status: params.status ?? UserStatus.ACTIVE,
       createdAt: now,
       updatedAt: now,
     };
@@ -68,7 +68,7 @@ export class Doctor extends User {
       licenseNumber: params.licenseNumber,
       isAvailable: params.isAvailable ?? true,
       currentPatientLoad: 0,
-      maxPatientLoad: params.maxPatientLoad || 10,
+      maxPatientLoad: params.maxPatientLoad !== undefined ? params.maxPatientLoad : 10,
     };
 
     return new Doctor(userProps, doctorProps);
