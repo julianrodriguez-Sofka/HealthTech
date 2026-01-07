@@ -11,6 +11,7 @@ import { DoctorLayout } from '@components/DoctorLayout';
 import { NurseDashboard } from '@features/nurse/NurseDashboard';
 import TriageDashboard from './features/triage/TriageDashboard';
 import PatientForm from './features/triage/PatientForm';
+import { AdminDashboard } from '@features/admin/AdminDashboard';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -57,6 +58,16 @@ function App() {
           <Route path="unassigned" element={<div>Emergencias sin Asignar (Próximamente)</div>} />
           <Route path="records" element={<div>Expedientes (Próximamente)</div>} />
         </Route>
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Redirect root to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />

@@ -78,6 +78,9 @@ WORKDIR /app
 # Copiar package.json para runtime
 COPY --chown=nodejs:nodejs package*.json ./
 
+# HUMAN REVIEW: Copy tsconfig.json for tsconfig-paths to resolve path aliases at runtime
+COPY --chown=nodejs:nodejs tsconfig.json ./
+
 # Copiar node_modules desde build stage (solo production dependencies)
 COPY --chown=nodejs:nodejs --from=builder /app/node_modules ./node_modules
 

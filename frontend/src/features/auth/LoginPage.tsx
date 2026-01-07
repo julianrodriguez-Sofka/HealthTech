@@ -138,7 +138,7 @@ export function LoginPage() {
               <label className="block text-sm font-medium text-white mb-3">
                 Selecciona tu rol
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -216,6 +216,47 @@ export function LoginPage() {
                     <motion.div
                       layoutId="roleSelector"
                       className="absolute inset-0 border-2 border-emerald-400 rounded-xl"
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelectedRole(UserRole.ADMIN)}
+                  className={`
+                    relative p-4 rounded-xl border-2 transition-all
+                    ${
+                      selectedRole === UserRole.ADMIN
+                        ? 'bg-purple-500/20 border-purple-400 shadow-lg shadow-purple-500/25'
+                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                    }
+                  `}
+                >
+                  <User
+                    className={`w-6 h-6 mx-auto mb-2 ${
+                      selectedRole === UserRole.ADMIN
+                        ? 'text-purple-300'
+                        : 'text-slate-400'
+                    }`}
+                  />
+                  <div
+                    className={`text-sm font-medium ${
+                      selectedRole === UserRole.ADMIN
+                        ? 'text-white'
+                        : 'text-slate-300'
+                    }`}
+                  >
+                    Admin
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    Management
+                  </div>
+                  {selectedRole === UserRole.ADMIN && (
+                    <motion.div
+                      layoutId="roleSelector"
+                      className="absolute inset-0 border-2 border-purple-400 rounded-xl"
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}

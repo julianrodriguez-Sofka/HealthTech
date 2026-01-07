@@ -8,11 +8,11 @@
  * permitiendo cambiar de base de datos sin modificar la lógica de negocio.
  */
 
+import { Patient } from '@domain/entities/Patient';
 import { Result } from '@shared/Result';
-import { PatientNotFoundError, DuplicatePatientError } from '@domain/errors';
 
 /**
- * Datos de paciente para persistencia
+ * Datos de paciente para persistencia (legacy interface - mantener para compatibilidad)
  */
 export interface PatientData {
   id: string;
@@ -26,38 +26,19 @@ export interface PatientData {
 
 /**
  * Contrato del repositorio de pacientes
+ * HUMAN REVIEW: Updated to use Result Pattern for better error handling
  */
 export interface IPatientRepository {
-  /**
-   * Guarda un paciente en el sistema
-   *
-   * @param patient - Datos del paciente a guardar
-   * @returns Result con el paciente guardado o error
-   */
-  save(patient: PatientData): Promise<Result<PatientData, DuplicatePatientError>>;
-
-  /**
-   * Busca un paciente por su ID
-   *
-   * @param id - ID del paciente
-   * @returns Result con el paciente encontrado o null
-   */
-  findById(id: string): Promise<Result<PatientData | null, PatientNotFoundError>>;
-
-  /**
-   * Busca un paciente por su documento de identidad
-   *
-   * @param documentId - Documento de identidad
-   * @returns Result con el paciente encontrado o null
-   */
+  save(patient: PatientData): Promise<Result<PatientData, Error>>;
+  findById(id: string): Promise<Result<PatientData | null, Error>>;
+  findAll(): Promise<Result<PatientData[], Error>>;
   findByDocumentId(documentId: string): Promise<Result<PatientData | null, Error>>;
-
-  /**
-   * Lista todos los pacientes (para admin/búsqueda)
-   *
-   * @param limit - Límite de resultados
-   * @param offset - Offset para paginación
-   * @returns Result con array de pacientes
-   */
-  findAll(limit?: number, offset?: number): Promise<Result<PatientData[], Error>>;
+  // HUMAN REVIEW: Methods using Patient entity for domain operations
+  saveEntity(patient: Patient): Promise<void>;
+  findEntityById(id: string): Promise<Patient | null>;
+  findAllEntities(): Promise<Patient[]>;
+  findByDoctorId(doctorId: string): Promise<Patient[]>;
+  update(patient: Patient): Promise<void>;
+  delete(id: string): Promise<void>;
 }
+

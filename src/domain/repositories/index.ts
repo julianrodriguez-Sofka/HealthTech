@@ -8,3 +8,7 @@
 export * from './IPatientRepository';
 export * from './IVitalsRepository';
 export * from './IAuditRepository';
+export * from './IUserRepository';
+export * from './IDoctorRepository';
+export * from './IPatientCommentRepository';
+

@@ -7,4 +7,8 @@
 export { InMemoryPatientRepository } from './InMemoryPatientRepository';
 export { InMemoryVitalsRepository } from './InMemoryVitalsRepository';
 export { InMemoryAuditRepository } from './InMemoryAuditRepository';
+export { InMemoryUserRepository } from './InMemoryUserRepository';
+export { InMemoryDoctorRepository } from './InMemoryDoctorRepository';
+export { InMemoryPatientCommentRepository } from './InMemoryPatientCommentRepository';
 export { UuidGenerator } from './UuidGenerator';
+

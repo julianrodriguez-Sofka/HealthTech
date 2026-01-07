@@ -107,6 +107,8 @@ export function useAuth(): UseAuthReturn {
           navigate('/nurse/dashboard');
         } else if (response.user.role === UserRole.DOCTOR) {
           navigate('/doctor/dashboard');
+        } else if (response.user.role === UserRole.ADMIN) {
+          navigate('/admin');
         }
       } catch (error) {
         setAuthState({
