@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Triage System E2E Tests
  * 
  * Tests end-to-end que simulan el flujo completo del sistema de triage:
@@ -15,21 +15,24 @@
 
 import request from 'supertest';
 import express, { Application } from 'express';
-import { PatientRoutes } from '@infrastructure/api/PatientRoutes';
-import { PatientManagementRoutes } from '@infrastructure/api/PatientManagementRoutes';
-import { UserRoutes } from '@infrastructure/api/UserRoutes';
-import { authRouter } from '@infrastructure/api/AuthRoutes';
-import { authMiddleware, requireRole } from '@infrastructure/middleware/auth.middleware';
-import { AuthService } from '@application/services/AuthService';
-import { CreateUserUseCase } from '@application/use-cases/CreateUserUseCase';
-import { IPatientRepository } from '@domain/repositories/IPatientRepository';
-import { IDoctorRepository } from '@domain/repositories/IDoctorRepository';
-import { IUserRepository } from '@domain/repositories/IUserRepository';
-import { IPatientCommentRepository } from '@domain/repositories/IPatientCommentRepository';
-import { Patient, PatientStatus } from '@domain/entities/Patient';
-import { Doctor, MedicalSpecialty } from '@domain/entities/Doctor';
-import { User, UserRole, UserStatus } from '@domain/entities/User';
-import { PatientComment, CommentType } from '@domain/entities/PatientComment';
+import { PatientRoutes } from '../../src/infrastructure/api/PatientRoutes';
+import { PatientManagementRoutes } from '../../src/infrastructure/api/PatientManagementRoutes';
+import { UserRoutes } from '../../src/infrastructure/api/UserRoutes';
+import { authRouter } from '../../src/infrastructure/api/AuthRoutes';
+import { authMiddleware, requireRole } from '../../src/infrastructure/middleware/auth.middleware';
+import { AuthService } from '../../src/application/services/AuthService';
+import { CreateUserUseCase } from '../../src/application/use-cases/CreateUserUseCase';
+import { IPatientRepository } from '../../src/domain/repositories/IPatientRepository';
+import { IVitalsRepository } from '../../src/domain/repositories/IVitalsRepository';
+import { IDoctorRepository } from '../../src/domain/repositories/IDoctorRepository';
+import { IUserRepository } from '../../src/domain/repositories/IUserRepository';
+import { IPatientCommentRepository } from '../../src/domain/repositories/IPatientCommentRepository';
+import { IObservable } from '../../src/domain/observers/IObserver';
+import { TriageEvent } from '../../src/domain/observers/TriageEvents';
+import { Patient, PatientStatus } from '../../src/domain/entities/Patient';
+import { Doctor, MedicalSpecialty } from '../../src/domain/entities/Doctor';
+import { User, UserRole, UserStatus } from '../../src/domain/entities/User';
+import { PatientComment, CommentType } from '../../src/domain/entities/PatientComment';
 
 describe('Triage System E2E Tests', () => {
   let app: Application;
@@ -102,6 +105,7 @@ describe('Triage System E2E Tests', () => {
       licenseNumber: 'MED-E2E-001',
       maxPatientLoad: 10,
       status: UserStatus.ACTIVE,
+      isAvailable: true,
     });
     (mockDoctor as any).passwordHash = 'hash';
 
@@ -135,8 +139,8 @@ describe('Triage System E2E Tests', () => {
     app.use('/api/v1/auth', authRoutes);
 
     // User routes (admin only)
-    const createUserUseCase = new CreateUserUseCase(mockUserRepo, mockDoctorRepo);
-    const userRoutes = new UserRoutes(createUserUseCase, mockUserRepo, mockDoctorRepo);
+    const createUserUseCase = new CreateUserUseCase(mockUserRepo, authService, mockDoctorRepo);
+    const userRoutes = new UserRoutes(mockUserRepo, mockDoctorRepo);
     app.use(
       '/api/v1/users',
       authMiddleware(authService),
@@ -145,7 +149,20 @@ describe('Triage System E2E Tests', () => {
     );
 
     // Patient routes (doctor/nurse/admin)
-    const patientRoutes = new PatientRoutes(mockPatientRepo);
+    const mockVitalsRepo: jest.Mocked<IVitalsRepository> = {
+      save: jest.fn(),
+      findByPatientId: jest.fn(),
+      findLatest: jest.fn(),
+      findByDateRange: jest.fn(),
+    } as any;
+
+    const mockEventBus: jest.Mocked<IObservable<TriageEvent>> = {
+      attach: jest.fn(),
+      detach: jest.fn(),
+      notify: jest.fn(),
+    } as any;
+
+    const patientRoutes = new PatientRoutes(mockPatientRepo, mockVitalsRepo, mockEventBus);
     app.use(
       '/api/v1/patients',
       authMiddleware(authService),
@@ -189,9 +206,11 @@ describe('Triage System E2E Tests', () => {
       };
 
       // Mock repository to simulate save
-      mockPatientRepo.save.mockImplementation(async (patient: Patient) => {
+      mockPatientRepo.save.mockImplementation(async (patientData: any) => {
+        // Create Patient entity from data to capture in registeredPatient
+        const patient = Patient.fromPersistence(patientData);
         registeredPatient = patient;
-        return patient;
+        return { isSuccess: true, value: patientData } as any;
       });
 
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
@@ -223,7 +242,7 @@ describe('Triage System E2E Tests', () => {
       const response = await request(app)
         .patch(`/api/v1/patient-mgmt/${registeredPatient.id}/assign-doctor`)
         .set('Authorization', `Bearer ${doctorToken}`)
-        .send({ doctorId: mockDoctor.id.value })
+        .send({ doctorId: mockDoctor.id })
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -238,18 +257,19 @@ describe('Triage System E2E Tests', () => {
 
       const mockComment = PatientComment.create({
         patientId: registeredPatient.id,
-        authorId: mockDoctor.id.value,
-        authorName: mockDoctor.name.value,
+        authorId: mockDoctor.id,
+        authorName: mockDoctor.name,
+        authorRole: 'doctor',
         content: 'Sospecha de síndrome coronario agudo. Se solicita ECG urgente y troponinas.',
         type: CommentType.DIAGNOSIS,
       });
-      mockCommentRepo.save.mockResolvedValue(mockComment);
+      mockCommentRepo.save.mockResolvedValue(undefined);
 
       const response = await request(app)
         .post(`/api/v1/patient-mgmt/${registeredPatient.id}/comments`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
-          authorId: mockDoctor.id.value,
+          authorId: mockDoctor.id,
           content: 'Sospecha de síndrome coronario agudo. Se solicita ECG urgente y troponinas.',
           type: 'diagnosis',
         })
@@ -287,18 +307,19 @@ describe('Triage System E2E Tests', () => {
 
       const treatmentComment = PatientComment.create({
         patientId: registeredPatient.id,
-        authorId: mockDoctor.id.value,
-        authorName: mockDoctor.name.value,
+        authorId: mockDoctor.id,
+        authorName: mockDoctor.name,
+        authorRole: 'doctor',
         content: 'Administrado AAS 300mg, nitroglicerina sublingual. ECG muestra elevación del ST. Se activa código infarto.',
         type: CommentType.TREATMENT,
       });
-      mockCommentRepo.save.mockResolvedValue(treatmentComment);
+      mockCommentRepo.save.mockResolvedValue(undefined);
 
       const response = await request(app)
         .post(`/api/v1/patient-mgmt/${registeredPatient.id}/comments`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
-          authorId: mockDoctor.id.value,
+          authorId: mockDoctor.id,
           content: 'Administrado AAS 300mg, nitroglicerina sublingual. ECG muestra elevación del ST. Se activa código infarto.',
           type: 'treatment',
         })
@@ -310,10 +331,10 @@ describe('Triage System E2E Tests', () => {
     it('Paso 6: Médico debe poder ver sus pacientes asignados', async () => {
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
-      mockPatientRepo.findByDoctor.mockResolvedValue([registeredPatient]);
+      mockPatientRepo.findByDoctorId.mockResolvedValue([registeredPatient]);
 
       const response = await request(app)
-        .get(`/api/v1/patient-mgmt/assigned/${mockDoctor.id.value}`)
+        .get(`/api/v1/patient-mgmt/assigned/${mockDoctor.id}`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .expect(200);
 
@@ -329,15 +350,17 @@ describe('Triage System E2E Tests', () => {
       mockCommentRepo.findByPatientId.mockResolvedValue([
         PatientComment.create({
           patientId: registeredPatient.id,
-          authorId: mockDoctor.id.value,
-          authorName: mockDoctor.name.value,
+          authorId: mockDoctor.id,
+          authorName: mockDoctor.name,
+          authorRole: 'doctor',
           content: 'Diagnóstico inicial',
           type: CommentType.DIAGNOSIS,
         }),
         PatientComment.create({
           patientId: registeredPatient.id,
-          authorId: mockDoctor.id.value,
-          authorName: mockDoctor.name.value,
+          authorId: mockDoctor.id,
+          authorName: mockDoctor.name,
+          authorRole: 'doctor',
           content: 'Tratamiento administrado',
           type: CommentType.TREATMENT,
         }),
@@ -412,9 +435,10 @@ describe('Triage System E2E Tests', () => {
         },
       };
 
-      mockPatientRepo.save.mockImplementation(async (patient: Patient) => {
+      mockPatientRepo.save.mockImplementation(async (patientData: any) => {
+        const patient = Patient.fromPersistence(patientData);
         nonUrgentPatient = patient;
-        return patient;
+        return { isSuccess: true, value: patientData } as any;
       });
 
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
@@ -517,11 +541,14 @@ describe('Triage System E2E Tests', () => {
         age: 30,
         gender: 'male',
         symptoms: ['test'],
+        priority: 3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 80,
           bloodPressure: '120/80',
           temperature: 37,
           oxygenSaturation: 98,
+          respiratoryRate: 16,
         },
       });
 

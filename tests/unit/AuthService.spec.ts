@@ -27,6 +27,8 @@ describe('AuthService (TDD)', () => {
       findByEmail: jest.fn(),
       findAll: jest.fn(),
       findByRole: jest.fn(),
+      existsByEmail: jest.fn(),
+      countByRole: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IUserRepository>;
 
@@ -41,6 +43,7 @@ describe('AuthService (TDD)', () => {
       licenseNumber: 'MED-12345',
       maxPatientLoad: 10,
       status: UserStatus.ACTIVE, // Explicitly set as ACTIVE
+      isAvailable: true,
     });
 
     // Mock password hash (in real implementation, password would be hashed)
@@ -153,6 +156,7 @@ describe('AuthService (TDD)', () => {
           email: 'inactive@hospital.com',
           name: 'Inactive User',
           role: UserRole.NURSE,
+          status: UserStatus.ACTIVE,
         });
         inactiveUser.changeStatus(UserStatus.INACTIVE);
         (inactiveUser as any).passwordHash = 'hash';
@@ -176,6 +180,7 @@ describe('AuthService (TDD)', () => {
           email: 'suspended@hospital.com',
           name: 'Suspended User',
           role: UserRole.DOCTOR,
+          status: UserStatus.ACTIVE,
         });
         suspendedUser.changeStatus(UserStatus.SUSPENDED);
         (suspendedUser as any).passwordHash = 'hash';
@@ -381,6 +386,7 @@ describe('AuthService (TDD)', () => {
         email: 'inactive@hospital.com',
         name: 'Inactive',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
       inactiveUser.changeStatus(UserStatus.INACTIVE);
 
@@ -467,6 +473,7 @@ describe('AuthService (TDD)', () => {
         email: 'inactive@hospital.com',
         name: 'Inactive',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
       inactiveUser.changeStatus(UserStatus.INACTIVE);
 
@@ -631,3 +638,5 @@ describe('AuthService (TDD)', () => {
     });
   });
 });
+
+

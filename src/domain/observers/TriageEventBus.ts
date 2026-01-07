@@ -26,7 +26,7 @@ export class TriageEventBus implements IObservable<TriageEvent> {
   private logger: Logger;
 
   constructor() {
-    this.logger = new Logger('TriageEventBus');
+    this.logger = Logger.getInstance();
   }
 
   /**
@@ -43,6 +43,13 @@ export class TriageEventBus implements IObservable<TriageEvent> {
   }
 
   /**
+   * Alias for subscribe (IObservable interface)
+   */
+  attach(observer: IObserver<TriageEvent>): void {
+    this.subscribe(observer);
+  }
+
+  /**
    * Elimina un observer de la lista de notificaciones
    */
   unsubscribe(observer: IObserver<TriageEvent>): void {
@@ -54,6 +61,13 @@ export class TriageEventBus implements IObservable<TriageEvent> {
         totalObservers: this.observers.length
       });
     }
+  }
+
+  /**
+   * Alias for unsubscribe (IObservable interface)
+   */
+  detach(observer: IObserver<TriageEvent>): void {
+    this.unsubscribe(observer);
   }
 
   /**
@@ -76,11 +90,7 @@ export class TriageEventBus implements IObservable<TriageEvent> {
       } catch (error) {
         // HUMAN REVIEW: NO fallar la notificación completa si un observer falla
         // Registrar el error y continuar con los demás observers
-        this.logger.error('Observer notification failed', {
-          observerType: observer.constructor.name,
-          eventType: event.eventType,
-          error
-        });
+        this.logger.error(`Observer notification failed - Observer: ${observer.constructor.name}, Event: ${event.eventType}, Error: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }

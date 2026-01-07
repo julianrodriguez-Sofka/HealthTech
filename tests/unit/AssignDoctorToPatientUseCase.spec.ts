@@ -8,7 +8,7 @@
  */
 
 import { AssignDoctorToPatientUseCase, AssignDoctorDTO } from '../../src/application/use-cases/AssignDoctorToPatientUseCase';
-import { Patient, PatientStatus } from '../../src/domain/entities/Patient';
+import { Patient, PatientStatus, PatientPriority } from '../../src/domain/entities/Patient';
 import { Doctor, MedicalSpecialty } from '../../src/domain/entities/Doctor';
 import { UserStatus } from '../../src/domain/entities/User';
 import { IPatientRepository } from '../../src/domain/repositories/IPatientRepository';
@@ -106,9 +106,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Test',
         age: 35,
         gender: 'male',
-        documentId: 'DOC123',
         symptoms: ['Dolor de pecho'],
-        triagePriority: 3,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 80,
           bloodPressure: '120/80',
@@ -142,9 +142,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Already Assigned',
         age: 40,
         gender: 'female',
-        documentId: 'DOC456',
         symptoms: ['Fiebre'],
-        triagePriority: 2,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 95,
           bloodPressure: '130/85',
@@ -175,9 +175,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Test',
         age: 25,
         gender: 'male',
-        documentId: 'DOC789',
         symptoms: ['Tos'],
-        triagePriority: 4,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 75,
           bloodPressure: '115/75',
@@ -222,9 +222,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Test',
         age: 30,
         gender: 'female',
-        documentId: 'DOC555',
         symptoms: ['Dolor abdominal'],
-        triagePriority: 3,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 82,
           bloodPressure: '118/78',
@@ -269,9 +269,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Success',
         age: 45,
         gender: 'male',
-        documentId: 'DOC111',
         symptoms: ['Dolor de cabeza'],
-        triagePriority: 4,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 78,
           bloodPressure: '120/80',
@@ -294,7 +294,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
       mockPatientRepo.findById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
-      mockDoctorRepo.save.mockResolvedValue(mockDoctor);
+      mockDoctorRepo.save.mockResolvedValue(undefined);
 
       const result = await useCase.execute(dto);
 
@@ -314,9 +314,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Load Test',
         age: 28,
         gender: 'female',
-        documentId: 'DOC222',
         symptoms: ['Fiebre leve'],
-        triagePriority: 5,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 76,
           bloodPressure: '115/75',
@@ -341,7 +341,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
       mockPatientRepo.findById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
-      mockDoctorRepo.save.mockResolvedValue(mockDoctor);
+      mockDoctorRepo.save.mockResolvedValue(undefined);
 
       await useCase.execute(dto);
 
@@ -358,9 +358,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Assign Test',
         age: 50,
         gender: 'male',
-        documentId: 'DOC333',
         symptoms: ['Revisión anual'],
-        triagePriority: 5,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 72,
           bloodPressure: '118/76',
@@ -383,7 +383,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
       mockPatientRepo.findById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
-      mockDoctorRepo.save.mockResolvedValue(mockDoctor);
+      mockDoctorRepo.save.mockResolvedValue(undefined);
 
       await useCase.execute(dto);
 
@@ -401,9 +401,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Persist',
         age: 38,
         gender: 'female',
-        documentId: 'DOC444',
         symptoms: ['Mareos'],
-        triagePriority: 3,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 85,
           bloodPressure: '125/82',
@@ -426,7 +426,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
       mockPatientRepo.findById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
-      mockDoctorRepo.save.mockResolvedValue(mockDoctor);
+      mockDoctorRepo.save.mockResolvedValue(undefined);
 
       await useCase.execute(dto);
 
@@ -450,9 +450,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient Error',
         age: 42,
         gender: 'male',
-        documentId: 'DOC555',
         symptoms: ['Error test'],
-        triagePriority: 4,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 80,
           bloodPressure: '120/80',
@@ -492,9 +492,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         name: 'Patient OK',
         age: 33,
         gender: 'female',
-        documentId: 'DOC666',
         symptoms: ['Test'],
-        triagePriority: 5,
+        priority: PatientPriority.P3,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 74,
           bloodPressure: '118/76',
@@ -540,3 +540,4 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
     });
   });
 });
+

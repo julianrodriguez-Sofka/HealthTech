@@ -71,17 +71,13 @@ export class MessagingService implements IMessagingService {
         logger.info(`[MessagingService] ✅ Message published successfully to ${queueName}`);
         return Result.ok(undefined);
       } else {
-        logger.error(`[MessagingService] ❌ Failed to publish message to ${queueName}`, {
-          error: result.error?.message || 'Unknown error'
-        });
+        logger.error(`[MessagingService] ❌ Failed to publish message to ${queueName}: ${result.error?.message || 'Unknown error'}`);
         return result;
       }
     } catch (error) {
       // HUMAN REVIEW: En producción, implementar estrategia de reintentos
       // con exponential backoff y dead letter queue para mensajes fallidos
-      logger.error(`[MessagingService] ❌ Exception publishing message to ${queueName}:`, {
-        error
-      });
+      logger.error(`[MessagingService] ❌ Exception publishing message to ${queueName}: ${error instanceof Error ? error.message : String(error)}`);
       return Result.fail(
         new MessagingServiceUnavailableError(
           `Failed to publish message to queue ${queueName}: ${error instanceof Error ? error.message : String(error)}`
@@ -97,5 +93,14 @@ export class MessagingService implements IMessagingService {
    */
   public isConnected(): boolean {
     return this.rabbitConnection.isConnected();
+  }
+
+  /**
+   * Desconecta el servicio de mensajería (cierra la conexión RabbitMQ)
+   *
+   * HUMAN REVIEW: Delegamos el cierre a RabbitMQConnection.
+   */
+  public async disconnect(): Promise<void> {
+    await this.rabbitConnection.close();
   }
 }

@@ -33,7 +33,7 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
   private readonly HIGH_PRIORITY_QUEUE = 'triage_high_priority';
 
   constructor(private readonly messagingService: IMessagingService) {
-    this.logger = new Logger('DoctorNotificationObserver');
+    this.logger = Logger.getInstance();
   }
 
   /**
@@ -68,7 +68,7 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
       }
     } catch (error) {
       // HUMAN REVIEW: En producción, registrar en sistema de monitoreo (Sentry, DataDog)
-      this.logger.error('Failed to send doctor notification', { event, error });
+      this.logger.error(`Failed to send doctor notification: ${error instanceof Error ? error.message : String(error)}`);
       // NO lanzar excepción - no queremos que falle el flujo principal si las notificaciones fallan
     }
   }
@@ -103,16 +103,9 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
     );
 
     if (result.isSuccess) {
-      this.logger.info('[DoctorNotificationObserver] ✅ Doctors notified about new patient via RabbitMQ', {
-        patientId: event.patientId,
-        priority: event.priority,
-        queue: this.HIGH_PRIORITY_QUEUE
-      });
+      this.logger.info(`[DoctorNotificationObserver] ✅ Doctors notified about new patient via RabbitMQ - Patient: ${event.patientId}, Priority: ${event.priority}`);
     } else {
-      this.logger.error('[DoctorNotificationObserver] ❌ Failed to publish patient registered event', {
-        error: result.error,
-        patientId: event.patientId
-      });
+      this.logger.error(`[DoctorNotificationObserver] ❌ Failed to publish patient registered event - Patient: ${event.patientId}, Error: ${result.error?.message || 'Unknown'}`);
     }
   }
 
@@ -145,16 +138,9 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
       );
 
       if (result.isSuccess) {
-        this.logger.warn('[DoctorNotificationObserver] ✅ Priority increased - doctors notified via RabbitMQ', {
-          patientId: event.patientId,
-          oldPriority: event.oldPriority,
-          newPriority: event.newPriority,
-        });
+        this.logger.warn(`[DoctorNotificationObserver] ✅ Priority increased - doctors notified via RabbitMQ - Patient: ${event.patientId}, Old: P${event.oldPriority}, New: P${event.newPriority}`);
       } else {
-        this.logger.error('[DoctorNotificationObserver] ❌ Failed to publish priority changed event', {
-          error: result.error,
-          patientId: event.patientId
-        });
+        this.logger.error(`[DoctorNotificationObserver] ❌ Failed to publish priority changed event - Patient: ${event.patientId}, Error: ${result.error?.message || 'Unknown'}`);
       }
     }
   }
@@ -181,10 +167,7 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
       detectedAt: event.occurredAt.toISOString()
     };
 
-    this.logger.error('[DoctorNotificationObserver] 🔴 CRITICAL VITALS - Publishing to RabbitMQ', {
-      patientId: event.patientId,
-      vitals: { heartRate: event.heartRate, oxygenSaturation: event.oxygenSaturation },
-    });
+    this.logger.error(`[DoctorNotificationObserver] 🔴 CRITICAL VITALS - Publishing to RabbitMQ - Patient: ${event.patientId}, HR: ${event.heartRate}, SpO2: ${event.oxygenSaturation}`);
 
     const result = await this.messagingService.publishToQueue(
       this.HIGH_PRIORITY_QUEUE,
@@ -192,14 +175,9 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
     );
 
     if (result.isSuccess) {
-      this.logger.error('[DoctorNotificationObserver] ✅ CRITICAL VITALS - all doctors alerted via RabbitMQ', {
-        patientId: event.patientId,
-      });
+      this.logger.error(`[DoctorNotificationObserver] ✅ CRITICAL VITALS - all doctors alerted via RabbitMQ - Patient: ${event.patientId}`);
     } else {
-      this.logger.error('[DoctorNotificationObserver] ❌ Failed to publish critical vitals event', {
-        error: result.error,
-        patientId: event.patientId
-      });
+      this.logger.error(`[DoctorNotificationObserver] ❌ Failed to publish critical vitals event - Patient: ${event.patientId}, Error: ${result.error?.message || 'Unknown'}`);
     }
   }
 
@@ -216,10 +194,7 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
       reassignedAt: event.occurredAt.toISOString()
     };
 
-    this.logger.info('[DoctorNotificationObserver] Publishing case reassigned event to RabbitMQ', {
-      patientId: event.patientId,
-      newDoctorId: event.newDoctorId
-    });
+    this.logger.info(`[DoctorNotificationObserver] Publishing case reassigned event to RabbitMQ - Patient: ${event.patientId}, New Doctor: ${event.newDoctorId}`);
 
     const result = await this.messagingService.publishToQueue(
       this.HIGH_PRIORITY_QUEUE,
@@ -227,15 +202,9 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
     );
 
     if (result.isSuccess) {
-      this.logger.info('[DoctorNotificationObserver] ✅ Case reassigned - doctor notified via RabbitMQ', {
-        patientId: event.patientId,
-        newDoctorId: event.newDoctorId,
-      });
+      this.logger.info(`[DoctorNotificationObserver] ✅ Case reassigned - doctor notified via RabbitMQ - Patient: ${event.patientId}, New Doctor: ${event.newDoctorId}`);
     } else {
-      this.logger.error('[DoctorNotificationObserver] ❌ Failed to publish case reassigned event', {
-        error: result.error,
-        patientId: event.patientId
-      });
+      this.logger.error(`[DoctorNotificationObserver] ❌ Failed to publish case reassigned event - Patient: ${event.patientId}, Error: ${result.error?.message || 'Unknown'}`);
     }
   }
 

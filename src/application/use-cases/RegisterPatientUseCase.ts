@@ -74,7 +74,7 @@ export class RegisterPatientUseCase {
     private readonly vitalsRepository: IVitalsRepository,
     private readonly eventBus: IObservable<TriageEvent>
   ) {
-    this.logger = new Logger('RegisterPatientUseCase');
+    this.logger = Logger.getInstance();
   }
 
   /**
@@ -126,7 +126,7 @@ export class RegisterPatientUseCase {
       // STEP 4: Guardar paciente
       const savePatientResult = await this.patientRepository.save(patientData);
       if (savePatientResult.isFailure) {
-        this.logger.error('Failed to save patient', { error: savePatientResult.error });
+        this.logger.error(`Failed to save patient: ${savePatientResult.error?.message || 'Unknown error'}`);
         return Result.fail(savePatientResult.error);
       }
 
@@ -146,7 +146,7 @@ export class RegisterPatientUseCase {
 
       const saveVitalsResult = await this.vitalsRepository.save(vitalsData);
       if (saveVitalsResult.isFailure) {
-        this.logger.error('Failed to save vitals', { error: saveVitalsResult.error });
+        this.logger.error(`Failed to save vitals: ${saveVitalsResult.error?.message || 'Unknown error'}`);
         // HUMAN REVIEW: En producción, considerar rollback del paciente si fallan los vitales
       }
 
@@ -166,7 +166,7 @@ export class RegisterPatientUseCase {
       } catch (notificationError) {
         // HUMAN REVIEW: NO fallar el registro si falla la notificación
         // Registrar el error pero continuar
-        this.logger.error('Failed to notify doctors (non-blocking)', { error: notificationError });
+        this.logger.error(`Failed to notify doctors (non-blocking): ${notificationError instanceof Error ? notificationError.message : String(notificationError)}`);
       }
 
       // STEP 7: Retornar resultado exitoso
@@ -188,7 +188,7 @@ export class RegisterPatientUseCase {
 
     } catch (error) {
       // HUMAN REVIEW: Catch-all para errores inesperados
-      this.logger.error('Unexpected error in RegisterPatientUseCase', { error });
+      this.logger.error(`Unexpected error in RegisterPatientUseCase: ${error instanceof Error ? error.message : String(error)}`);
       return Result.fail(new Error(`Failed to register patient: ${error}`));
     }
   }
@@ -294,7 +294,7 @@ export class RegisterPatientUseCase {
    */
   private extractSystolicBP(bloodPressure: string): number {
     const parts = bloodPressure.split('/');
-    return parseInt(parts[0], 10) || 120;
+    return parseInt(parts[0] || '120', 10) || 120;
   }
 
   /**

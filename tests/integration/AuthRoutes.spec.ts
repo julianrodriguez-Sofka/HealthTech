@@ -30,6 +30,8 @@ describe('Auth Routes Integration Tests (TDD)', () => {
       findByEmail: jest.fn(),
       findAll: jest.fn(),
       findByRole: jest.fn(),
+      existsByEmail: jest.fn(),
+      countByRole: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IUserRepository>;
 
@@ -44,6 +46,7 @@ describe('Auth Routes Integration Tests (TDD)', () => {
       licenseNumber: 'MED-99999',
       maxPatientLoad: 10,
       status: UserStatus.ACTIVE,
+      isAvailable: true,
     });
     (mockDoctor as any).passwordHash = 'hashedPassword123';
 
@@ -74,6 +77,7 @@ describe('Auth Routes Integration Tests (TDD)', () => {
         id: mockDoctor.id,
         email: 'doctor@hospital.com',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
     });
 
@@ -136,6 +140,7 @@ describe('Auth Routes Integration Tests (TDD)', () => {
         email: 'inactive@hospital.com',
         name: 'Inactive User',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
       inactiveUser.changeStatus(UserStatus.INACTIVE);
       (inactiveUser as any).passwordHash = 'hash';
@@ -307,6 +312,7 @@ describe('Auth Routes Integration Tests (TDD)', () => {
         email: 'inactive@hospital.com',
         name: 'Inactive',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
       inactiveUser.changeStatus(UserStatus.INACTIVE);
 
@@ -376,3 +382,5 @@ describe('Auth Routes Integration Tests (TDD)', () => {
     });
   });
 });
+
+

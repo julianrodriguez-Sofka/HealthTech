@@ -28,6 +28,11 @@ describe('GetDoctorPatientsUseCase (TDD)', () => {
       findByStatus: jest.fn(),
       findByPriority: jest.fn(),
       findByDoctorId: jest.fn(),
+      findByDocumentId: jest.fn(),
+      saveEntity: jest.fn(),
+      findEntityById: jest.fn(),
+      findAllEntities: jest.fn(),
+      update: jest.fn(),
       count: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IPatientRepository>;
@@ -39,6 +44,10 @@ describe('GetDoctorPatientsUseCase (TDD)', () => {
       findAll: jest.fn(),
       findAvailable: jest.fn(),
       findBySpecialty: jest.fn(),
+    updateAvailability: jest.fn(),
+    incrementPatientLoad: jest.fn(),
+    decrementPatientLoad: jest.fn(),
+    getStatistics: jest.fn(),
     } as jest.Mocked<IDoctorRepository>;
 
     useCase = new GetDoctorPatientsUseCase(mockPatientRepo, mockDoctorRepo);
@@ -50,6 +59,8 @@ describe('GetDoctorPatientsUseCase (TDD)', () => {
       specialty: MedicalSpecialty.CARDIOLOGY,
       licenseNumber: 'MED-12345',
       maxPatientLoad: 10,
+      status: UserStatus.ACTIVE,
+      isAvailable: true,
     });
 
     // Create mock patients
@@ -265,6 +276,8 @@ describe('GetDoctorPatientsUseCase (TDD)', () => {
         specialty: MedicalSpecialty.TRAUMATOLOGY,
         licenseNumber: 'MED-67890',
         maxPatientLoad: 15,
+        status: UserStatus.ACTIVE,
+        isAvailable: true,
       });
 
       mockDoctorRepo.findById.mockResolvedValue(orthopedicDoctor);
@@ -289,6 +302,7 @@ describe('GetDoctorPatientsUseCase (TDD)', () => {
         licenseNumber: 'MED-99999',
         maxPatientLoad: 5,
         status: UserStatus.INACTIVE,
+        isAvailable: true,
       });
 
       mockDoctorRepo.findById.mockResolvedValue(inactiveDoctor);
@@ -449,3 +463,4 @@ describe('GetDoctorPatientsUseCase (TDD)', () => {
     });
   });
 });
+

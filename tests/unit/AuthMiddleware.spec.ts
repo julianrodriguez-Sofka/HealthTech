@@ -50,6 +50,8 @@ describe('Auth Middleware (TDD)', () => {
       findByEmail: jest.fn(),
       findAll: jest.fn(),
       findByRole: jest.fn(),
+      existsByEmail: jest.fn(),
+      countByRole: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IUserRepository>;
 
@@ -64,6 +66,7 @@ describe('Auth Middleware (TDD)', () => {
       licenseNumber: 'MED-12345',
       maxPatientLoad: 10,
       status: UserStatus.ACTIVE,
+      isAvailable: true,
     });
     (mockDoctor as any).passwordHash = 'hash';
 
@@ -209,6 +212,7 @@ describe('Auth Middleware (TDD)', () => {
           email: 'inactive@hospital.com',
           name: 'Inactive',
           role: UserRole.DOCTOR,
+          status: UserStatus.ACTIVE,
         });
         inactiveUser.changeStatus(UserStatus.INACTIVE);
 
@@ -277,6 +281,7 @@ describe('Auth Middleware (TDD)', () => {
           userId: mockDoctor.id,
           email: mockDoctor.email,
           role: UserRole.DOCTOR,
+          status: UserStatus.ACTIVE,
         });
         const res = mockResponse();
         const next = mockNext;
@@ -292,6 +297,7 @@ describe('Auth Middleware (TDD)', () => {
           userId: mockDoctor.id,
           email: mockDoctor.email,
           role: UserRole.DOCTOR,
+          status: UserStatus.ACTIVE,
         });
         const res = mockResponse();
         const next = mockNext;
@@ -311,6 +317,7 @@ describe('Auth Middleware (TDD)', () => {
           userId: mockDoctor.id,
           email: mockDoctor.email,
           role: UserRole.DOCTOR,
+          status: UserStatus.ACTIVE,
         });
         const res = mockResponse();
         const next = mockNext;
@@ -340,6 +347,7 @@ describe('Auth Middleware (TDD)', () => {
           userId: mockAdmin.id,
           email: mockAdmin.email,
           role: UserRole.ADMIN,
+          status: UserStatus.ACTIVE,
         });
         const res = mockResponse();
         const next = mockNext;
@@ -377,6 +385,7 @@ describe('Auth Middleware (TDD)', () => {
           userId: mockDoctor.id,
           email: mockDoctor.email,
           role: UserRole.DOCTOR,
+          status: UserStatus.ACTIVE,
         });
         const res = mockResponse();
         const next = mockNext;
@@ -451,3 +460,5 @@ describe('Auth Middleware (TDD)', () => {
     });
   });
 });
+
+

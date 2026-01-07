@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PatientRoutes Integration Tests (TDD)
  * 
  * Tests de integración para endpoints REST de gestión de pacientes.
@@ -11,17 +11,22 @@ import request from 'supertest';
 import express, { Application } from 'express';
 import { PatientRoutes } from '../../src/infrastructure/api/PatientRoutes';
 import { IPatientRepository } from '../../src/domain/repositories/IPatientRepository';
+import { IVitalsRepository } from '../../src/domain/repositories/IVitalsRepository';
 import { Patient, PatientPriority, PatientStatus } from '../../src/domain/entities/Patient';
 import { AuthService } from '../../src/application/services/AuthService';
 import { IUserRepository } from '../../src/domain/repositories/IUserRepository';
 import { Doctor, MedicalSpecialty } from '../../src/domain/entities/Doctor';
 import { UserRole, UserStatus } from '../../src/domain/entities/User';
 import { authMiddleware, requireRole } from '../../src/infrastructure/middleware/auth.middleware';
+import { IObservable } from '../../src/domain/observers/IObserver';
+import { TriageEvent } from '../../src/domain/observers/TriageEvents';
 
 describe('Patient Routes Integration Tests (TDD)', () => {
   let app: Application;
   let patientRoutes: PatientRoutes;
   let mockPatientRepo: jest.Mocked<IPatientRepository>;
+  let mockVitalsRepo: jest.Mocked<IVitalsRepository>;
+  let mockEventBus: jest.Mocked<IObservable<TriageEvent>>;
   let authService: AuthService;
   let mockUserRepo: jest.Mocked<IUserRepository>;
   let mockDoctor: Doctor;
@@ -36,6 +41,11 @@ describe('Patient Routes Integration Tests (TDD)', () => {
       findAll: jest.fn(),
       findByDocumentId: jest.fn(),
       delete: jest.fn(),
+      saveEntity: jest.fn(),
+      findEntityById: jest.fn(),
+      findAllEntities: jest.fn(),
+      findByDoctorId: jest.fn(),
+      update: jest.fn(),
     } as jest.Mocked<IPatientRepository>;
 
     mockUserRepo = {
@@ -44,6 +54,8 @@ describe('Patient Routes Integration Tests (TDD)', () => {
       findByEmail: jest.fn(),
       findAll: jest.fn(),
       findByRole: jest.fn(),
+      existsByEmail: jest.fn(),
+      countByRole: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IUserRepository>;
 
@@ -56,6 +68,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
       licenseNumber: 'MED-12345',
       maxPatientLoad: 10,
       status: UserStatus.ACTIVE,
+      isAvailable: true,
     });
     (mockDoctor as any).passwordHash = 'hash';
 
@@ -70,8 +83,22 @@ describe('Patient Routes Integration Tests (TDD)', () => {
     });
     doctorToken = loginResult.accessToken!;
 
+    // Setup mock vitals repository and event bus
+    mockVitalsRepo = {
+      save: jest.fn(),
+      findByPatientId: jest.fn(),
+      findLatest: jest.fn(),
+      findByDateRange: jest.fn(),
+    } as jest.Mocked<IVitalsRepository>;
+
+    mockEventBus = {
+      attach: jest.fn(),
+      detach: jest.fn(),
+      notify: jest.fn(),
+    } as jest.Mocked<IObservable<TriageEvent>>;
+
     // Setup Express app with patient routes
-    patientRoutes = new PatientRoutes(mockPatientRepo);
+    patientRoutes = new PatientRoutes(mockPatientRepo, mockVitalsRepo, mockEventBus);
     app = express();
     app.use(express.json());
     app.use(
@@ -130,8 +157,9 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         name: 'Juan Pérez',
         age: 45,
         gender: 'male',
-        documentId: 'DOC-123',
         symptoms: ['Dolor de pecho'],
+        priority: 1,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 120,
           bloodPressure: '140/90',
@@ -172,9 +200,10 @@ describe('Patient Routes Integration Tests (TDD)', () => {
     const validPatientData = {
       name: 'María García',
       age: 30,
-      gender: 'female',
-      documentId: 'DOC-456',
-      symptoms: ['Fiebre'],
+      gender: 'female' as const,
+        symptoms: ['Fiebre'],
+        priority: 1,
+        arrivalTime: new Date(),
       vitals: {
         heartRate: 80,
         bloodPressure: '120/80',
@@ -273,8 +302,9 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         name: 'Carlos López',
         age: 50,
         gender: 'male',
-        documentId: 'DOC-789',
         symptoms: ['Dolor abdominal'],
+        priority: 1,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 90,
           bloodPressure: '130/85',
@@ -326,8 +356,9 @@ describe('Patient Routes Integration Tests (TDD)', () => {
       name: 'Ana Martínez Updated',
       age: 35,
       gender: 'female',
-      documentId: 'DOC-999',
-      symptoms: ['Dolor de cabeza'],
+        symptoms: ['Dolor de cabeza'],
+        priority: 1,
+        arrivalTime: new Date(),
       vitals: {
         heartRate: 75,
         bloodPressure: '115/75',
@@ -342,8 +373,9 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         name: 'Ana Martínez',
         age: 34,
         gender: 'female',
-        documentId: 'DOC-999',
         symptoms: ['Mareos'],
+        priority: 1,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 70,
           bloodPressure: '110/70',
@@ -395,8 +427,9 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         name: 'Test',
         age: 30,
         gender: 'male',
-        documentId: 'DOC-111',
         symptoms: ['Test'],
+        priority: 1,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 80,
           bloodPressure: '120/80',
@@ -433,8 +466,9 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         name: 'Test',
         age: 30,
         gender: 'male',
-        documentId: 'DOC-222',
         symptoms: ['Test'],
+        priority: 1,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 80,
           bloodPressure: '120/80',
@@ -474,8 +508,9 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         name: 'Pedro González',
         age: 60,
         gender: 'male',
-        documentId: 'DOC-333',
         symptoms: ['Tos'],
+        priority: 1,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 85,
           bloodPressure: '125/80',
@@ -516,8 +551,9 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         name: 'Test',
         age: 40,
         gender: 'female',
-        documentId: 'DOC-444',
         symptoms: ['Test'],
+        priority: 1,
+        arrivalTime: new Date(),
         vitals: {
           heartRate: 80,
           bloodPressure: '120/80',
@@ -540,3 +576,5 @@ describe('Patient Routes Integration Tests (TDD)', () => {
     });
   });
 });
+
+

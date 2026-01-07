@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PatientManagementRoutes Integration Tests (TDD)
  * 
  * Tests de integración para endpoints de gestión avanzada de pacientes:
@@ -12,17 +12,17 @@
 
 import request from 'supertest';
 import express, { Application } from 'express';
-import { PatientManagementRoutes } from '@infrastructure/api/PatientManagementRoutes';
-import { authMiddleware, requireRole } from '@infrastructure/middleware/auth.middleware';
-import { AuthService } from '@application/services/AuthService';
-import { Patient } from '@domain/entities/Patient';
-import { Doctor, MedicalSpecialty } from '@domain/entities/Doctor';
-import { User, UserRole, UserStatus } from '@domain/entities/User';
-import { PatientComment, CommentType } from '@domain/entities/PatientComment';
-import { IPatientRepository } from '@domain/repositories/IPatientRepository';
-import { IDoctorRepository } from '@domain/repositories/IDoctorRepository';
-import { IUserRepository } from '@domain/repositories/IUserRepository';
-import { IPatientCommentRepository } from '@domain/repositories/IPatientCommentRepository';
+import { PatientManagementRoutes } from '../../src/infrastructure/api/PatientManagementRoutes';
+import { authMiddleware, requireRole } from '../../src/infrastructure/middleware/auth.middleware';
+import { AuthService } from '../../src/application/services/AuthService';
+import { Patient } from '../../src/domain/entities/Patient';
+import { Doctor, MedicalSpecialty } from '../../src/domain/entities/Doctor';
+import { User, UserRole, UserStatus } from '../../src/domain/entities/User';
+import { PatientComment, CommentType } from '../../src/domain/entities/PatientComment';
+import { IPatientRepository } from '../../src/domain/repositories/IPatientRepository';
+import { IDoctorRepository } from '../../src/domain/repositories/IDoctorRepository';
+import { IUserRepository } from '../../src/domain/repositories/IUserRepository';
+import { IPatientCommentRepository } from '../../src/domain/repositories/IPatientCommentRepository';
 
 describe('Patient Management Routes Integration Tests (TDD)', () => {
   let app: Application;
@@ -66,13 +66,15 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       name: 'Patient Test',
       age: 30,
       gender: 'male',
-      reason: 'Test reason',
       symptoms: ['fever', 'cough'],
+      priority: 3,
+      arrivalTime: new Date(),
       vitals: {
         heartRate: 80,
         bloodPressure: '120/80',
         temperature: 37.5,
         oxygenSaturation: 98,
+        respiratoryRate: 16,
       },
     });
   });
@@ -168,7 +170,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       const response = await request(app)
         .patch('/api/v1/patients/patient-id/assign-doctor')
         .set('Authorization', `Bearer ${doctorToken}`)
-        .send({ doctorId: mockDoctor.id.value });
+        .send({ doctorId: mockDoctor.id });
 
       expect([200, 400]).toContain(response.status); // 400 si ya está asignado
     });
@@ -188,7 +190,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       const response = await request(app)
         .patch(`/api/v1/patients/${mockPatient.id}/assign-doctor`)
         .set('Authorization', `Bearer ${doctorToken}`)
-        .send({ doctorId: mockDoctor.id.value })
+        .send({ doctorId: mockDoctor.id })
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -213,7 +215,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       const response = await request(app)
         .patch('/api/v1/patients/invalid-id/assign-doctor')
         .set('Authorization', `Bearer ${doctorToken}`)
-        .send({ doctorId: mockDoctor.id.value })
+        .send({ doctorId: mockDoctor.id })
         .expect(400);
 
       expect(response.body.success).toBe(false);
@@ -238,7 +240,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       const response = await request(app)
         .patch(`/api/v1/patients/${mockPatient.id}/assign-doctor`)
         .set('Authorization', `Bearer ${doctorToken}`)
-        .send({ doctorId: mockDoctor.id.value })
+        .send({ doctorId: mockDoctor.id })
         .expect(500);
 
       expect(response.body.success).toBe(false);
@@ -256,19 +258,20 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
 
       const mockComment = PatientComment.create({
         patientId: mockPatient.id,
-        authorId: mockDoctor.id.value,
+        authorId: mockDoctor.id,
         authorName: mockDoctor.name,
+        authorRole: 'doctor',
         content: 'Test comment',
         type: CommentType.OBSERVATION,
       });
 
-      mockCommentRepo.save.mockResolvedValue(mockComment);
+      mockCommentRepo.save.mockResolvedValue(undefined);
 
       const response = await request(app)
         .post(`/api/v1/patients/${mockPatient.id}/comments`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
-          authorId: mockDoctor.id.value,
+          authorId: mockDoctor.id,
           content: 'Test comment',
           type: 'observation',
         })
@@ -284,7 +287,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
         .post(`/api/v1/patients/${mockPatient.id}/comments`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
-          authorId: mockDoctor.id.value,
+          authorId: mockDoctor.id,
           // Falta content y type
         })
         .expect(400);
@@ -298,7 +301,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
         .post(`/api/v1/patients/${mockPatient.id}/comments`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
-          authorId: mockDoctor.id.value,
+          authorId: mockDoctor.id,
           content: 'Test',
           type: 'invalid-type',
         })
@@ -315,7 +318,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
         .post(`/api/v1/patients/${mockPatient.id}/comments`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
-          authorId: mockDoctor.id.value,
+          authorId: mockDoctor.id,
           content: 'Test',
           type: 'observation',
         })
@@ -510,10 +513,10 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     it('debe retornar pacientes asignados al doctor (200)', async () => {
       const patients = [mockPatient];
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
-      mockPatientRepo.findByDoctor.mockResolvedValue(patients);
+      mockPatientRepo.findByDoctorId.mockResolvedValue(patients);
 
       const response = await request(app)
-        .get(`/api/v1/patients/assigned/${mockDoctor.id.value}`)
+        .get(`/api/v1/patients/assigned/${mockDoctor.id}`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .expect(200);
 
@@ -523,10 +526,10 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
 
     it('debe retornar lista vacía si doctor no tiene pacientes (200)', async () => {
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
-      mockPatientRepo.findByDoctor.mockResolvedValue([]);
+      mockPatientRepo.findByDoctorId.mockResolvedValue([]);
 
       const response = await request(app)
-        .get(`/api/v1/patients/assigned/${mockDoctor.id.value}`)
+        .get(`/api/v1/patients/assigned/${mockDoctor.id}`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .expect(200);
 
@@ -538,7 +541,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       mockDoctorRepo.findById.mockRejectedValue(new Error('DB error'));
 
       const response = await request(app)
-        .get(`/api/v1/patients/assigned/${mockDoctor.id.value}`)
+        .get(`/api/v1/patients/assigned/${mockDoctor.id}`)
         .set('Authorization', `Bearer ${doctorToken}`)
         .expect(500);
 
@@ -555,15 +558,17 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       const mockComments = [
         PatientComment.create({
           patientId: mockPatient.id,
-          authorId: mockDoctor.id.value,
-          authorName: mockDoctor.name.value,
+          authorId: mockDoctor.id,
+          authorName: mockDoctor.name,
+          authorRole: 'doctor',
           content: 'Comment 1',
           type: CommentType.OBSERVATION,
         }),
         PatientComment.create({
           patientId: mockPatient.id,
-          authorId: mockDoctor.id.value,
-          authorName: mockDoctor.name.value,
+          authorId: mockDoctor.id,
+          authorName: mockDoctor.name,
+          authorRole: 'doctor',
           content: 'Comment 2',
           type: CommentType.DIAGNOSIS,
         }),

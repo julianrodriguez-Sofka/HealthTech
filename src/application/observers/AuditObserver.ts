@@ -24,7 +24,7 @@ export class AuditObserver implements IObserver<TriageEvent> {
   private logger: Logger;
 
   constructor(private readonly auditRepository: IAuditRepository) {
-    this.logger = new Logger('AuditObserver');
+    this.logger = Logger.getInstance();
   }
 
   /**
@@ -46,13 +46,13 @@ export class AuditObserver implements IObserver<TriageEvent> {
 
       if (result.isFailure) {
         // HUMAN REVIEW: En producción, enviar a sistema de monitoreo externo
-        this.logger.error('Failed to save audit log', { event, error: result.error });
+        this.logger.error(`Failed to save audit log - Event: ${event.eventType}, Patient: ${event.patientId}, Error: ${result.error?.message || 'Unknown'}`);
       } else {
-        this.logger.debug('Audit log saved', { eventId: event.eventId, eventType: event.eventType });
+        this.logger.debug(`Audit log saved - Event: ${event.eventId}, Type: ${event.eventType}`);
       }
     } catch (error) {
       // HUMAN REVIEW: NO lanzar excepción - la auditoría no debe romper el flujo principal
-      this.logger.error('Audit observer error', { event, error });
+      this.logger.error(`Audit observer error - Event: ${event.eventType}, Error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

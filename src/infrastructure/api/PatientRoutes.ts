@@ -16,7 +16,7 @@
 import { Router, Request, Response } from 'express';
 import { IPatientRepository } from '@domain/repositories/IPatientRepository';
 import { IVitalsRepository } from '@domain/repositories/IVitalsRepository';
-import { Patient, PatientPriority, PatientStatus } from '@domain/entities/Patient';
+import { PatientPriority, PatientStatus } from '@domain/entities/Patient';
 import { RegisterPatientUseCase } from '@application/use-cases/RegisterPatientUseCase';
 import { IObservable } from '@domain/observers/IObserver';
 import { TriageEvent } from '@domain/observers/TriageEvents';
@@ -229,7 +229,7 @@ export class PatientRoutes {
         return;
       }
 
-      const patient = await this.patientRepository.findById(id);
+      const patient = await this.patientRepository.findEntityById(id);
 
       if (!patient) {
         res.status(404).json({
@@ -254,10 +254,10 @@ export class PatientRoutes {
         patient.updateStatus(updates.status);
       }
 
-      // Persistir
-      await this.patientRepository.save(patient);
+      // Persistir usando update para Patient entity
+      await this.patientRepository.update(patient);
 
-      res.status(200).json(patient);
+      res.status(200).json(patient.toJSON());
     } catch (error: any) {
       console.error('[PatientRoutes] Error updating patient:', error);
       res.status(400).json({
@@ -283,7 +283,7 @@ export class PatientRoutes {
         return;
       }
 
-      const patient = await this.patientRepository.findById(id);
+      const patient = await this.patientRepository.findEntityById(id);
 
       if (!patient) {
         res.status(404).json({
@@ -296,7 +296,7 @@ export class PatientRoutes {
       // HUMAN REVIEW: Considerar soft delete en lugar de hard delete
       // Por ahora solo cambiamos estado a 'discharged'
       patient.updateStatus(PatientStatus.DISCHARGED);
-      await this.patientRepository.save(patient);
+      await this.patientRepository.update(patient);
 
       res.status(200).json({
         success: true,
@@ -314,7 +314,11 @@ export class PatientRoutes {
   /**
    * Calcular prioridad automática basada en signos vitales
    * HUMAN REVIEW: Esta lógica debe ser validada por personal médico
+   * 
+   * NOTE: This method is currently not used but kept for future reference.
+   * The priority calculation is now handled by RegisterPatientUseCase.
    */
+  // @ts-expect-error - Method kept for reference but not actively used
   private calculatePriority(vitals: any): PatientPriority {
     // P1 (Critical) - Riesgo vital inmediato
     if (

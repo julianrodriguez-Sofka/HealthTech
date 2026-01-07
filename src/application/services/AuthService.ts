@@ -11,7 +11,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
-import { User, UserRole } from '../../domain/entities/User';
+import { UserRole } from '../../domain/entities/User';
 
 /**
  * DTO for login request
@@ -343,7 +343,7 @@ export class AuthService {
    * @private
    */
   private async generateToken(payload: JWTPayload, expiresIn: string): Promise<string> {
-    return jwt.sign(payload, this.jwtSecret, { expiresIn });
+    return jwt.sign(payload, this.jwtSecret, { expiresIn } as jwt.SignOptions);
   }
 
   /**

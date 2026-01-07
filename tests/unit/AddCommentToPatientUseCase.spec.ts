@@ -33,6 +33,11 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
       findByStatus: jest.fn(),
       findByPriority: jest.fn(),
       findByDoctorId: jest.fn(),
+      findByDocumentId: jest.fn(),
+      saveEntity: jest.fn(),
+      findEntityById: jest.fn(),
+      findAllEntities: jest.fn(),
+      update: jest.fn(),
       count: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IPatientRepository>;
@@ -42,6 +47,9 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
       findById: jest.fn(),
       findByPatientId: jest.fn(),
       findByAuthorId: jest.fn(),
+      findByType: jest.fn(),
+      findRecent: jest.fn(),
+      countByPatientId: jest.fn(),
       findAll: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IPatientCommentRepository>;
@@ -52,6 +60,8 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
       findByEmail: jest.fn(),
       findAll: jest.fn(),
       findByRole: jest.fn(),
+      existsByEmail: jest.fn(),
+      countByRole: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IUserRepository>;
 
@@ -81,6 +91,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
       email: 'doctor@hospital.com',
       name: 'Dr. García',
       role: UserRole.DOCTOR,
+      status: UserStatus.ACTIVE,
     });
 
     // Create mock nurse
@@ -88,6 +99,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
       email: 'nurse@hospital.com',
       name: 'Enf. López',
       role: UserRole.NURSE,
+      status: UserStatus.ACTIVE,
     });
   });
 
@@ -381,6 +393,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
         email: 'admin@hospital.com',
         name: 'Admin Test',
         role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
       });
 
       mockPatientRepo.findById.mockResolvedValue(mockPatient);
@@ -657,3 +670,4 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
   });
 });
+

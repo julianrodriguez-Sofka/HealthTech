@@ -25,6 +25,11 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
       findByStatus: jest.fn(),
       findByPriority: jest.fn(),
       findByDoctorId: jest.fn(),
+      findByDocumentId: jest.fn(),
+      saveEntity: jest.fn(),
+      findEntityById: jest.fn(),
+      findAllEntities: jest.fn(),
+      update: jest.fn(),
       count: jest.fn(),
       delete: jest.fn(),
     } as jest.Mocked<IPatientRepository>;

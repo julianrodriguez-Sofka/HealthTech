@@ -62,6 +62,14 @@ export const authMiddleware = (authService: AuthService) => {
 
       const token = parts[1];
 
+      if (!token) {
+        res.status(401).json({
+          success: false,
+          error: 'Token is missing',
+        });
+        return;
+      }
+
       // Validate token with AuthService
       const validationResult = await authService.validateToken(token);
 

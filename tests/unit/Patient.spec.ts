@@ -11,8 +11,8 @@ import {
   PatientStatus,
   VitalSigns,
   PatientProps,
-} from '@domain/entities/Patient';
-import { PatientComment, CommentType } from '@domain/entities/PatientComment';
+} from '../../src/domain/entities/Patient';
+import { PatientComment, CommentType } from '../../src/domain/entities/PatientComment';
 
 describe('Patient Entity - Domain', () => {
   describe('Factory Methods', () => {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * UserRoutes Integration Tests (TDD)
  * 
  * Tests de integración para endpoints REST de gestión de usuarios.
@@ -14,7 +14,7 @@ import { IUserRepository } from '../../src/domain/repositories/IUserRepository';
 import { IDoctorRepository } from '../../src/domain/repositories/IDoctorRepository';
 import { User, UserRole, UserStatus } from '../../src/domain/entities/User';
 import { Doctor, MedicalSpecialty } from '../../src/domain/entities/Doctor';
-import { Nurse, NurseArea, NurseShift } from '../../src/domain/entities/Nurse';
+import { Nurse, NurseArea } from '../../src/domain/entities/Nurse';
 import { AuthService } from '../../src/application/services/AuthService';
 import { authMiddleware, requireRole } from '../../src/infrastructure/middleware/auth.middleware';
 
@@ -37,6 +37,8 @@ describe('User Routes Integration Tests (TDD)', () => {
       findAll: jest.fn(),
       findByRole: jest.fn(),
       delete: jest.fn(),
+      existsByEmail: jest.fn(),
+      countByRole: jest.fn(),
     } as jest.Mocked<IUserRepository>;
 
     mockDoctorRepo = {
@@ -47,6 +49,12 @@ describe('User Routes Integration Tests (TDD)', () => {
       findAvailableDoctors: jest.fn(),
       findAll: jest.fn(),
       delete: jest.fn(),
+      findByUserId: jest.fn(),
+      findAvailable: jest.fn(),
+      updateAvailability: jest.fn(),
+      incrementPatientLoad: jest.fn(),
+      decrementPatientLoad: jest.fn(),
+      getStatistics: jest.fn(),
     } as jest.Mocked<IDoctorRepository>;
 
     // Create AuthService and admin user
@@ -100,6 +108,7 @@ describe('User Routes Integration Tests (TDD)', () => {
         licenseNumber: 'MED-123',
         maxPatientLoad: 10,
         status: UserStatus.ACTIVE,
+        isAvailable: true,
       });
       (mockDoctor as any).passwordHash = 'hash';
 
@@ -145,10 +154,11 @@ describe('User Routes Integration Tests (TDD)', () => {
           email: adminData.email,
           name: adminData.name,
           role: UserRole.ADMIN,
+          status: UserStatus.ACTIVE,
         });
 
         mockUserRepo.findByEmail.mockResolvedValue(null);
-        mockUserRepo.save.mockResolvedValue(newAdmin);
+        mockUserRepo.save.mockResolvedValue(undefined);
 
         const response = await request(app)
           .post('/api/v1/users')
@@ -217,8 +227,7 @@ describe('User Routes Integration Tests (TDD)', () => {
         };
 
         mockUserRepo.findByEmail.mockResolvedValue(null);
-        mockDoctorRepo.findByLicenseNumber.mockResolvedValue(null);
-        mockUserRepo.save.mockResolvedValue({} as any);
+        mockUserRepo.save.mockResolvedValue(undefined);
         mockDoctorRepo.save.mockResolvedValue({} as any);
 
         const response = await request(app)
@@ -276,7 +285,7 @@ describe('User Routes Integration Tests (TDD)', () => {
         };
 
         mockUserRepo.findByEmail.mockResolvedValue(null);
-        mockUserRepo.save.mockResolvedValue({} as any);
+        mockUserRepo.save.mockResolvedValue(undefined);
 
         const response = await request(app)
           .post('/api/v1/users')
@@ -375,7 +384,7 @@ describe('User Routes Integration Tests (TDD)', () => {
     it('debe retornar lista de usuarios (200)', async () => {
       const users = [
         mockAdmin,
-        User.create({ email: 'user2@test.com', name: 'User 2', role: UserRole.DOCTOR }),
+        User.create({ email: 'user2@test.com', name: 'User 2', role: UserRole.DOCTOR, status: UserStatus.ACTIVE }),
       ];
 
       mockUserRepo.findAll.mockResolvedValue(users);
@@ -392,7 +401,7 @@ describe('User Routes Integration Tests (TDD)', () => {
 
     it('debe filtrar usuarios por role (200)', async () => {
       const doctors = [
-        User.create({ email: 'doc1@test.com', name: 'Doc 1', role: UserRole.DOCTOR }),
+        User.create({ email: 'doc1@test.com', name: 'Doc 1', role: UserRole.DOCTOR, status: UserStatus.ACTIVE }),
       ];
 
       mockUserRepo.findAll.mockResolvedValue(doctors);
@@ -437,6 +446,7 @@ describe('User Routes Integration Tests (TDD)', () => {
         email: 'test@test.com',
         name: 'Test User',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
 
       // First call: Auth middleware validates token (returns admin)
@@ -495,7 +505,7 @@ describe('User Routes Integration Tests (TDD)', () => {
       // Auth middleware + route findById
       mockUserRepo.findById.mockResolvedValueOnce(mockAdmin);
       mockUserRepo.findById.mockResolvedValueOnce(testUser);
-      mockUserRepo.save.mockResolvedValue(testUser);
+      mockUserRepo.save.mockResolvedValue(undefined);
 
       const response = await request(app)
         .patch(`/api/v1/users/${testUser.id}/status`)
@@ -513,6 +523,7 @@ describe('User Routes Integration Tests (TDD)', () => {
         email: 'test@test.com',
         name: 'Test',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
 
       // Auth middleware + route findById
@@ -534,6 +545,7 @@ describe('User Routes Integration Tests (TDD)', () => {
         email: 'test@test.com',
         name: 'Test',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
 
       // Auth middleware + route findById
@@ -569,6 +581,7 @@ describe('User Routes Integration Tests (TDD)', () => {
         email: 'test@test.com',
         name: 'Test',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
 
       // Auth middleware + route findById
@@ -598,7 +611,7 @@ describe('User Routes Integration Tests (TDD)', () => {
       // Auth middleware + route findById
       mockUserRepo.findById.mockResolvedValueOnce(mockAdmin);
       mockUserRepo.findById.mockResolvedValueOnce(testUser);
-      mockUserRepo.save.mockResolvedValue(testUser);
+      mockUserRepo.save.mockResolvedValue(undefined);
 
       const response = await request(app)
         .delete(`/api/v1/users/${testUser.id}`)
@@ -628,6 +641,7 @@ describe('User Routes Integration Tests (TDD)', () => {
         email: 'test@test.com',
         name: 'Test',
         role: UserRole.DOCTOR,
+        status: UserStatus.ACTIVE,
       });
 
       // Auth middleware + route findById
@@ -644,3 +658,5 @@ describe('User Routes Integration Tests (TDD)', () => {
     });
   });
 });
+
+

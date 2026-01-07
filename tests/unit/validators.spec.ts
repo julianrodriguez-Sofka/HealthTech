@@ -13,7 +13,7 @@ import {
   validateEmail,
   validateMinLength,
   validateMaxLength,
-} from '@shared/validators';
+} from '../../src/shared/validators';
 
 class TestError extends Error {
   constructor(message: string) {

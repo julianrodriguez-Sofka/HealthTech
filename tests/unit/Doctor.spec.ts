@@ -51,6 +51,8 @@ describe('Doctor Entity - Domain', () => {
           specialty: MedicalSpecialty.EMERGENCY_MEDICINE,
           licenseNumber: 'MED99999',
           status: UserStatus.ACTIVE,
+          isAvailable: true,
+          maxPatientLoad: 10,
         };
 
         const doctor1 = Doctor.createDoctor(params);
@@ -68,6 +70,8 @@ describe('Doctor Entity - Domain', () => {
           specialty: MedicalSpecialty.GENERAL_MEDICINE,
           licenseNumber: 'MED55555',
           status: UserStatus.ACTIVE,
+          isAvailable: true,
+          maxPatientLoad: 10,
         };
 
         const doctor = Doctor.createDoctor(params);
@@ -79,7 +83,7 @@ describe('Doctor Entity - Domain', () => {
           email: 'dr.brown@hospital.com',
           name: 'Dr. Emily Brown',
           specialty: MedicalSpecialty.PEDIATRICS,
-          licenseNumber: 'MED77777',
+          isAvailable: true,          maxPatientLoad: 10,          licenseNumber: 'MED77777',
           status: UserStatus.ACTIVE,
         };
 
@@ -91,6 +95,8 @@ describe('Doctor Entity - Domain', () => {
         const params = {
           email: 'dr.davis@hospital.com',
           name: 'Dr. Michael Davis',
+          isAvailable: true,
+          maxPatientLoad: 10,
           specialty: MedicalSpecialty.SURGERY,
           licenseNumber: 'MED88888',
           status: UserStatus.ACTIVE,
@@ -105,6 +111,8 @@ describe('Doctor Entity - Domain', () => {
         
         const params = {
           email: 'dr.wilson@hospital.com',
+          isAvailable: true,
+          maxPatientLoad: 10,
           name: 'Dr. Lisa Wilson',
           specialty: MedicalSpecialty.NEUROLOGY,
           licenseNumber: 'MED11111',
@@ -160,6 +168,8 @@ describe('Doctor Entity - Domain', () => {
     it('debe lanzar error si specialty es inválida', () => {
       const params = {
         email: 'dr.invalid@hospital.com',
+        isAvailable: true,
+        maxPatientLoad: 10,
         name: 'Dr. Invalid Specialty',
         specialty: 'INVALID_SPECIALTY' as MedicalSpecialty,
         licenseNumber: 'MED12345',
@@ -178,6 +188,8 @@ describe('Doctor Entity - Domain', () => {
         specialty: MedicalSpecialty.GENERAL_MEDICINE,
         licenseNumber: '',
         status: UserStatus.ACTIVE,
+        isAvailable: true,
+        maxPatientLoad: 10,
       };
 
       expect(() => {
@@ -192,6 +204,8 @@ describe('Doctor Entity - Domain', () => {
         specialty: MedicalSpecialty.CARDIOLOGY,
         licenseNumber: 'AB12',
         status: UserStatus.ACTIVE,
+        isAvailable: true,
+        maxPatientLoad: 10,
       };
 
       expect(() => {
@@ -206,6 +220,7 @@ describe('Doctor Entity - Domain', () => {
         specialty: MedicalSpecialty.SURGERY,
         licenseNumber: 'MED12345',
         status: UserStatus.ACTIVE,
+        isAvailable: true,
         maxPatientLoad: 0,
       };
 
@@ -221,6 +236,7 @@ describe('Doctor Entity - Domain', () => {
         specialty: MedicalSpecialty.PEDIATRICS,
         licenseNumber: 'MED12345',
         status: UserStatus.ACTIVE,
+        isAvailable: true,
         maxPatientLoad: 51,
       };
 
@@ -257,6 +273,8 @@ describe('Doctor Entity - Domain', () => {
         specialty: MedicalSpecialty.GENERAL_MEDICINE,
         licenseNumber: 'MED12345',
         status: UserStatus.ACTIVE,
+        isAvailable: true,
+        maxPatientLoad: 10,
       };
 
       expect(() => {
@@ -271,6 +289,8 @@ describe('Doctor Entity - Domain', () => {
         specialty: MedicalSpecialty.CARDIOLOGY,
         licenseNumber: 'MED12345',
         status: UserStatus.ACTIVE,
+        isAvailable: true,
+        maxPatientLoad: 10,
       };
 
       expect(() => {
@@ -374,6 +394,8 @@ describe('Doctor Entity - Domain', () => {
           specialty: MedicalSpecialty.NEUROLOGY,
           licenseNumber: 'MED12345',
           status: UserStatus.ACTIVE,
+          isAvailable: true,
+          maxPatientLoad: 10,
         });
 
         const originalUpdatedAt = doctor.updatedAt;
@@ -465,6 +487,8 @@ describe('Doctor Entity - Domain', () => {
           specialty: MedicalSpecialty.PEDIATRICS,
           licenseNumber: 'MED12345',
           status: UserStatus.ACTIVE,
+          isAvailable: true,
+          maxPatientLoad: 10,
         });
 
         expect(() => {
@@ -508,6 +532,7 @@ describe('Doctor Entity - Domain', () => {
           licenseNumber: 'MED12345',
           status: UserStatus.ACTIVE,
           isAvailable: true,
+          maxPatientLoad: 10,
         });
 
         expect(doctor.isAvailable).toBe(true);
@@ -523,6 +548,7 @@ describe('Doctor Entity - Domain', () => {
           licenseNumber: 'MED12345',
           status: UserStatus.ACTIVE,
           isAvailable: false,
+          maxPatientLoad: 10,
         });
 
         expect(doctor.isAvailable).toBe(false);
@@ -536,6 +562,8 @@ describe('Doctor Entity - Domain', () => {
           name: 'Dr. Toggle 3',
           specialty: MedicalSpecialty.GENERAL_MEDICINE,
           licenseNumber: 'MED12345',
+          isAvailable: true,
+          maxPatientLoad: 10,
           status: UserStatus.ACTIVE,
         });
 
@@ -556,6 +584,8 @@ describe('Doctor Entity - Domain', () => {
           name: 'Dr. Specialty Change',
           specialty: MedicalSpecialty.GENERAL_MEDICINE,
           licenseNumber: 'MED12345',
+          isAvailable: true,
+          maxPatientLoad: 10,
           status: UserStatus.ACTIVE,
         });
 
@@ -570,6 +600,8 @@ describe('Doctor Entity - Domain', () => {
           name: 'Dr. Invalid Update',
           specialty: MedicalSpecialty.SURGERY,
           licenseNumber: 'MED12345',
+          isAvailable: true,
+          maxPatientLoad: 10,
           status: UserStatus.ACTIVE,
         });
 
@@ -584,6 +616,8 @@ describe('Doctor Entity - Domain', () => {
           name: 'Dr. Specialty 2',
           specialty: MedicalSpecialty.PEDIATRICS,
           licenseNumber: 'MED12345',
+          isAvailable: true,
+          maxPatientLoad: 10,
           status: UserStatus.ACTIVE,
         });
 
@@ -606,6 +640,8 @@ describe('Doctor Entity - Domain', () => {
         name: 'Dr. Immutable',
         specialty: MedicalSpecialty.CARDIOLOGY,
         licenseNumber: 'MED12345',
+        isAvailable: true,
+        maxPatientLoad: 10,
         status: UserStatus.ACTIVE,
       });
 
@@ -622,6 +658,8 @@ describe('Doctor Entity - Domain', () => {
         name: 'Dr. License',
         specialty: MedicalSpecialty.SURGERY,
         licenseNumber: 'MED99999',
+        isAvailable: true,
+        maxPatientLoad: 10,
         status: UserStatus.ACTIVE,
       });
 
@@ -670,6 +708,8 @@ describe('Doctor Entity - Domain', () => {
         name: 'Dr. Active',
         specialty: MedicalSpecialty.GENERAL_MEDICINE,
         licenseNumber: 'MED12345',
+        isAvailable: true,
+        maxPatientLoad: 10,
         status: UserStatus.ACTIVE,
       });
 
@@ -682,6 +722,8 @@ describe('Doctor Entity - Domain', () => {
         name: 'Dr. Role Check',
         specialty: MedicalSpecialty.CARDIOLOGY,
         licenseNumber: 'MED12345',
+        isAvailable: true,
+        maxPatientLoad: 10,
         status: UserStatus.ACTIVE,
       });
 
@@ -696,6 +738,8 @@ describe('Doctor Entity - Domain', () => {
         name: 'Dr. Status Change',
         specialty: MedicalSpecialty.SURGERY,
         licenseNumber: 'MED12345',
+        isAvailable: true,
+        maxPatientLoad: 10,
         status: UserStatus.ACTIVE,
       });
 
