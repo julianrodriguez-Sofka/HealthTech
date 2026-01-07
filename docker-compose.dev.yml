@@ -22,3 +22,18 @@ services:
     command: npm run dev  # Usar ts-node-dev para hot reload
     ports:
       - "9229:9229"  # Puerto de debugging
+
+  frontend:
+    build:
+      context: ./frontend-new
+      dockerfile: Dockerfile
+    volumes:
+      # Hot reload para frontend
+      - ./frontend-new/src:/app/src
+      - ./frontend-new/public:/app/public
+      - /app/node_modules
+    command: npm run dev
+    ports:
+      - "3003:3003"  # Vite dev server
+    environment:
+      - VITE_API_URL=http://localhost:3000

@@ -146,30 +146,35 @@ services:
       - healthtech-network
 
   # ==================================================================
-  # SERVICIO 4: Frontend (React + Vite + Nginx)
+  # SERVICIO 4: Frontend (React + Vite Dev Server)
   # ==================================================================
   # Aplicación frontend con:
   # - React 18 para UI interactiva
   # - Tailwind CSS para diseño moderno
   # - WebSocket client para actualizaciones en tiempo real
-  # - Nginx para servir archivos estáticos optimizados
+  # - Vite dev server para desarrollo rápido
   # ==================================================================
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend-new
       dockerfile: Dockerfile
     container_name: healthtech-frontend
     restart: unless-stopped
     ports:
-      - "80:80"      # HTTP
+      - "3003:3003"  # Vite dev server
+    environment:
+      - VITE_API_URL=http://localhost:3000
     depends_on:
       - app
+    volumes:
+      - ./frontend-new/src:/app/src
+      - ./frontend-new/public:/app/public
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003"]
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     networks:
       - healthtech-network
 

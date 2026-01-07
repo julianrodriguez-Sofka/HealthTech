@@ -1,6 +1,84 @@
-# HealthTech
+# HealthTech - Sistema de Triage Médico
 
-Proyecto de gestión de salud desarrollado con TypeScript siguiendo principios SOLID y arquitectura en capas.
+**Sistema inteligente de priorización de pacientes para servicios de urgencias**
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20.19.5-green)](https://nodejs.org/)
+[![Coverage](https://img.shields.io/badge/Coverage-80.8%25-brightgreen)](./PHASE_10_REPORT.md)
+[![Architecture](https://img.shields.io/badge/Architecture-Microservices-orange)](./MICROSERVICES_ARCHITECTURE.md)
+[![Tests](https://img.shields.io/badge/Tests-609%2F629_passing-success)](./PHASE_10_REPORT.md)
+
+---
+
+## 🐳 Quick Start con Docker (Recomendado)
+
+### Opción 1: Script Automático
+
+**Windows (PowerShell):**
+```powershell
+.\docker-deploy.ps1
+```
+
+**Linux/Mac:**
+```bash
+chmod +x docker-deploy.sh
+./docker-deploy.sh
+```
+
+### Opción 2: Docker Compose Manual
+
+```bash
+# Producción (puerto 80)
+docker-compose up -d
+
+# Desarrollo con hot reload (puerto 3003)
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+📚 **Ver [DOCKER_GUIDE.md](DOCKER_GUIDE.md) para documentación completa**
+
+---
+
+## 🏗️ **Arquitectura: Modular Monolith (Microservices-Ready)**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      API GATEWAY (Express)                       │
+│                    http://localhost:3000                         │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+        ▼                       ▼                       ▼
+┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+│ 🔐 AUTH      │       │ 👤 PATIENT   │       │ 🏥 TRIAGE    │
+│   SERVICE    │◄─────►│   SERVICE    │◄─────►│   SERVICE    │
+│              │       │              │       │              │
+│ • Login      │       │ • Register   │       │ • Calculate  │
+│ • JWT        │       │ • CRUD       │       │ • Priority   │
+│ • Users      │       │ • Comments   │       │ • Rules      │
+└──────────────┘       └──────────────┘       └──────────────┘
+        │                       │                       │
+        │              ┌────────┴────────┐              │
+        │              ▼                 ▼              │
+        │      ┌──────────────┐  ┌──────────────┐      │
+        │      │ 🔔 NOTIF     │  │ 📝 AUDIT     │      │
+        └─────►│   SERVICE    │  │   SERVICE    │◄─────┘
+               │              │  │              │
+               │ • Observers  │  │ • Logging    │
+               │ • WebSocket  │  │ • Tracing    │
+               └──────────────┘  └──────────────┘
+                       │                  │
+                       ▼                  ▼
+               ┌──────────────────────────────┐
+               │   Shared Kernel (Common)     │
+               │ • Logger • Result • Validators│
+               └──────────────────────────────┘
+```
+
+**📖 Ver documentación completa**: [MICROSERVICES_ARCHITECTURE.md](./MICROSERVICES_ARCHITECTURE.md)
+
+---
 
 ## 📋 Descripción
 

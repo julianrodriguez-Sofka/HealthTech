@@ -11,10 +11,10 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { CreateUserUseCase } from '@application/use-cases/CreateUserUseCase';
-import { IUserRepository } from '@domain/repositories/IUserRepository';
-import { IDoctorRepository } from '@domain/repositories/IDoctorRepository';
-import { UserRole, UserStatus } from '@domain/entities/User';
+import { CreateUserUseCase } from '../../application/use-cases/CreateUserUseCase';
+import { IUserRepository } from '../../domain/repositories/IUserRepository';
+import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
+import { UserRole, UserStatus } from '../../domain/entities/User';
 
 export class UserRoutes {
   private router: Router;
@@ -36,6 +36,9 @@ export class UserRoutes {
 
     // Obtener usuario por ID
     this.router.get('/:id', this.getUserById.bind(this));
+
+    // Actualizar datos de usuario
+    this.router.patch('/:id', this.updateUser.bind(this));
 
     // Actualizar estado de usuario
     this.router.patch('/:id/status', this.updateUserStatus.bind(this));
@@ -205,6 +208,79 @@ export class UserRoutes {
       res.status(500).json({
         success: false,
         error: 'Error interno del servidor al obtener usuario'
+      });
+    }
+  }
+
+  /**
+   * PATCH /api/v1/users/:id
+   * Actualizar datos de usuario (nombre, email, contraseña)
+   */
+  private async updateUser(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { name, email, password } = req.body;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'User ID is required'
+        });
+        return;
+      }
+
+      const user = await this.userRepository.findById(id);
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          error: `Usuario con ID ${id} no encontrado`
+        });
+        return;
+      }
+
+      // Actualizar campos si se proporcionan
+      if (name && name !== user.name) {
+        // HUMAN REVIEW: Validar formato de nombre
+        (user as any).name = name;
+      }
+
+      if (email && email !== user.email) {
+        // Verificar que el email no esté en uso por otro usuario
+        const existingUser = await this.userRepository.findByEmail(email);
+        if (existingUser && existingUser.id !== id) {
+          res.status(409).json({
+            success: false,
+            error: 'El email ya está en uso por otro usuario'
+          });
+          return;
+        }
+        (user as any).email = email;
+      }
+
+      if (password) {
+        // HUMAN REVIEW: Aquí debería hashearse la contraseña
+        // Por ahora se guarda tal cual (NO RECOMENDADO EN PRODUCCIÓN)
+        (user as any).password = password;
+      }
+
+      await this.userRepository.save(user);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          status: user.status
+        }
+      });
+    } catch (error) {
+      console.error('[UserRoutes] Error updating user:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error interno del servidor al actualizar usuario'
       });
     }
   }

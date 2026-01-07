@@ -9,11 +9,13 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
+import { createServer, Server as HTTPServer } from 'http';
 import { swaggerSpec, swaggerUIOptions } from './openapi/swaggerConfig';
 import { App } from '../app';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.middleware';
 import { validateVitalSigns } from './middleware/validation.middleware';
 import { RabbitMQConnection } from './messaging/rabbitmq-connection';
+import { WebSocketServer } from './sockets/websocket-server';
 import { UserRoutes } from './api/UserRoutes';
 import { PatientRoutes } from './api/PatientRoutes';
 import { PatientManagementRoutes } from './api/PatientManagementRoutes';
@@ -29,10 +31,11 @@ import {
  */
 class ExpressServer {
   private app: express.Application;
+  private httpServer: HTTPServer;
   private healthTechApp: App;
   private port: number;
   private rabbitMQ: RabbitMQConnection | null = null;
-  private server: ReturnType<typeof express.application.listen> | null = null;
+  private wsServer: WebSocketServer | null = null;
   
   // HUMAN REVIEW: Repository instances for dependency injection
   private userRepository: InMemoryUserRepository;
@@ -42,6 +45,7 @@ class ExpressServer {
 
   constructor(port: number = 3000) {
     this.app = express();
+    this.httpServer = createServer(this.app);
     this.healthTechApp = new App();
     this.port = port;
     
@@ -427,8 +431,18 @@ class ExpressServer {
       await this.healthTechApp.initialize();
       console.log('✅ HealthTech application initialized');
 
-      // 4. Iniciar servidor Express
-      this.server = this.app.listen(this.port, () => {
+      // 4. Inicializar WebSocket Server
+      this.wsServer = new WebSocketServer({
+        port: this.port,
+        corsOrigin: process.env.CORS_ORIGIN || 'http://localhost',
+        pingTimeout: 60000,
+        pingInterval: 25000
+      });
+      this.wsServer.initialize(this.httpServer);
+      console.log('✅ WebSocket server initialized');
+
+      // 5. Iniciar servidor HTTP
+      this.httpServer.listen(this.port, () => {
         console.log('\n🚀 HealthTech Triage API Server');
         console.log('================================');
         console.log(`📡 Server running on: http://localhost:${this.port}`);
@@ -467,9 +481,9 @@ class ExpressServer {
 
     try {
       // 1. Cerrar servidor HTTP (no aceptar más conexiones)
-      if (this.server) {
+      if (this.httpServer) {
         await new Promise<void>((resolve, reject) => {
-          this.server?.close((err) => {
+          this.httpServer?.close((err) => {
             if (err) {
               console.error('❌ Error closing HTTP server:', err);
               reject(err);
@@ -487,7 +501,13 @@ class ExpressServer {
         });
       }
 
-      // 2. Cerrar conexión RabbitMQ
+      // 2. Cerrar WebSocket server
+      if (this.wsServer) {
+        await this.wsServer.stop();
+        console.log('✅ WebSocket server closed');
+      }
+
+      // 3. Cerrar conexión RabbitMQ
       if (this.rabbitMQ && this.rabbitMQ.isConnected()) {
         await this.rabbitMQ.close();
         console.log('✅ RabbitMQ connection closed');
