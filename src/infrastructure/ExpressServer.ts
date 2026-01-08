@@ -33,6 +33,9 @@ import { TriageEventBus } from '@domain/observers/TriageEventBus';
 import { DoctorNotificationObserver } from '@application/observers/DoctorNotificationObserver';
 import { MessagingService } from './messaging/MessagingService';
 import { TriageQueueManager } from './messaging/triage-queue-manager';
+// HUMAN REVIEW: Importar entidades Doctor y Nurse para crearlas correctamente en seedTestUsers
+import { Doctor, MedicalSpecialty } from '../domain/entities/Doctor';
+import { Nurse, NurseArea } from '../domain/entities/Nurse';
 
 /**
  * Clase principal del servidor Express
@@ -218,27 +221,22 @@ class ExpressServer {
     );
     this.app.use('/api/v1/users', userRoutes.getRouter());
 
-    // HUMAN REVIEW: Patient CRUD Routes (with Observer pattern)
+    // HUMAN REVIEW: Consolidar todas las rutas de pacientes en un solo router
+    // Esto evita conflictos de routing donde /:id captura rutas más específicas
+    // Pasamos todas las dependencias necesarias para las rutas de management
     const patientRoutes = new PatientRoutes(
       this.patientRepository,
       this.vitalsRepository,
-      this.eventBus
-    );
-    const patientRouter = patientRoutes.getRouter();
-
-    // HUMAN REVIEW: Patient Management Routes (enhanced endpoints)
-    const patientManagementRoutes = new PatientManagementRoutes(
-      this.patientRepository,
+      this.eventBus,
       this.doctorRepository,
       this.patientCommentRepository,
       this.userRepository
     );
-    const managementRouter = patientManagementRoutes.getRouter();
+    const patientRouter = patientRoutes.getRouter();
 
-    // Merge both routers under /api/v1/patients
-    // Basic CRUD routes come first, then management routes
+    // HUMAN REVIEW: Registrar un solo router con todas las rutas ordenadas correctamente
+    // Las rutas específicas (/:id/assign-doctor) están antes de las genéricas (/:id)
     this.app.use('/api/v1/patients', patientRouter);
-    this.app.use('/api/v1/patients', managementRouter);
 
     // Legacy placeholder endpoints
     this.setupPlaceholderEndpoints();
@@ -433,32 +431,76 @@ class ExpressServer {
     const authService = new AuthService(this.userRepository, jwtSecret);
 
     try {
-      // Check if admin already exists
+      // HUMAN REVIEW: Verificar si los usuarios ya existen Y si los doctores están en doctorRepository
+      // CRÍTICO: Los doctores deben estar en ambos repositorios (userRepository y doctorRepository)
       const existingAdmin = await this.userRepository.findByEmail('admin@healthtech.com');
-      if (existingAdmin) {
-        console.log('⏭️  Test users already seeded - skipping');
+      const existingDoctor = await this.userRepository.findByEmail('carlos.mendoza@healthtech.com');
+      const existingNurse = await this.userRepository.findByEmail('ana.garcia@healthtech.com');
+      
+      // Verificar si el doctor existe en doctorRepository (no solo en userRepository)
+      let doctorExistsInDoctorRepo = false;
+      if (existingDoctor) {
+        const doctorInRepo = await this.doctorRepository.findById(existingDoctor.id);
+        doctorExistsInDoctorRepo = doctorInRepo !== null;
+      }
+      
+      // Si todos los usuarios existen Y el doctor está en doctorRepository, saltar seeding
+      if (existingAdmin && existingDoctor && existingNurse && doctorExistsInDoctorRepo) {
+        console.log('⏭️  Test users already seeded correctly - skipping');
         return;
+      }
+      
+      // HUMAN REVIEW: Si faltan usuarios o el doctor no está en doctorRepository, limpiar y recrear
+      // Esto asegura que los doctores se creen correctamente como entidades Doctor
+      console.log('🔄 Re-seeding test users with correct entity types...');
+      // Limpiar usuarios existentes
+      const allUsers = await this.userRepository.findAll();
+      for (const user of allUsers) {
+        await this.userRepository.delete(user.id);
+      }
+      // Limpiar doctores
+      if ('clear' in this.doctorRepository && typeof (this.doctorRepository as any).clear === 'function') {
+        (this.doctorRepository as any).clear();
+      }
+      // Limpiar también password hashes
+      if ('clear' in this.userRepository && typeof (this.userRepository as any).clear === 'function') {
+        (this.userRepository as any).clear();
       }
 
       // HUMAN REVIEW: Crear usuarios de prueba con contraseñas hasheadas
+      // IMPORTANTE: Estos emails y contraseñas deben coincidir con los usados en el frontend
+      // El frontend usa 'password123' como contraseña por defecto
       const testUsers = [
         {
           email: 'admin@healthtech.com',
-          name: 'Admin Principal',
+          name: 'María Rodríguez',
           role: 'admin' as const,
-          password: 'admin123'
+          password: 'password123'
         },
+        {
+          email: 'carlos.mendoza@healthtech.com',
+          name: 'Dr. Carlos Mendoza',
+          role: 'doctor' as const,
+          password: 'password123'
+        },
+        {
+          email: 'ana.garcia@healthtech.com',
+          name: 'Ana García',
+          role: 'nurse' as const,
+          password: 'password123'
+        },
+        // Usuarios adicionales para compatibilidad con diferentes variantes
         {
           email: 'doctor@healthtech.com',
           name: 'Dr. Juan García',
           role: 'doctor' as const,
-          password: 'doctor123'
+          password: 'password123'
         },
         {
           email: 'enfermera@healthtech.com',
           name: 'Enfermera María López',
           role: 'nurse' as const,
-          password: 'nurse123'
+          password: 'password123'
         }
       ];
 
@@ -466,22 +508,63 @@ class ExpressServer {
         // Hash password
         const passwordHash = await authService.hashPassword(userData.password);
 
-        // Create user entity
-        const user = User.create({
-          email: userData.email,
-          name: userData.name,
-          role: userData.role === 'admin' ? UserRole.ADMIN : 
-                userData.role === 'doctor' ? UserRole.DOCTOR : UserRole.NURSE,
-          status: UserStatus.ACTIVE
-        });
+        // HUMAN REVIEW: Crear la entidad correcta según el rol
+        // CRÍTICO: Los doctores deben crearse como Doctor, no como User genérico
+        // porque AssignDoctorToPatientUseCase busca en doctorRepository, no en userRepository
+        let user: User;
+        
+        if (userData.role === 'doctor') {
+          // Crear Doctor con especialidad y licencia
+          const doctor = Doctor.createDoctor({
+            email: userData.email,
+            name: userData.name,
+            status: UserStatus.ACTIVE,
+            specialty: MedicalSpecialty.EMERGENCY_MEDICINE, // Especialidad por defecto para triage
+            licenseNumber: `LIC-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+            isAvailable: true,
+            maxPatientLoad: 10
+          });
+          
+          // Guardar en ambos repositorios: userRepository (para login) y doctorRepository (para asignación)
+          await this.userRepository.save(doctor);
+          await this.doctorRepository.save(doctor);
+          
+          user = doctor;
+          console.log(`  ✓ Doctor entity created and saved in both repositories`);
+        } else if (userData.role === 'nurse') {
+          // Crear Nurse con área y turno
+          const nurse = Nurse.createNurse({
+            email: userData.email,
+            name: userData.name,
+            status: UserStatus.ACTIVE,
+            area: NurseArea.TRIAGE, // Área por defecto para enfermeras de triage
+            shift: 'morning',
+            licenseNumber: `LIC-${Date.now()}-${Math.random().toString(36).substring(7)}`
+          });
+          
+          await this.userRepository.save(nurse);
+          user = nurse;
+          console.log(`  ✓ Nurse entity created and saved`);
+        } else {
+          // Crear User genérico para admin
+          user = User.create({
+            email: userData.email,
+            name: userData.name,
+            role: UserRole.ADMIN,
+            status: UserStatus.ACTIVE
+          });
+          
+          await this.userRepository.save(user);
+        }
 
-        // Save user
-        await this.userRepository.save(user);
-
-        // Save password hash
+        // Save password hash - CRÍTICO para que el login funcione
+        // HUMAN REVIEW: El repositorio InMemory implementa savePasswordHash, debe llamarse siempre
         if ('savePasswordHash' in this.userRepository && 
             typeof this.userRepository.savePasswordHash === 'function') {
           await this.userRepository.savePasswordHash(user.id, passwordHash);
+          console.log(`  ✓ Password hash saved for ${userData.email}`);
+        } else {
+          console.error(`  ✗ ERROR: savePasswordHash method not available for ${userData.email}`);
         }
 
         console.log(`✅ Test user created: ${userData.email} (password: ${userData.password})`);
