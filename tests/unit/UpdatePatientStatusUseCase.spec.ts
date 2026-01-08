@@ -67,7 +67,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Patient ID is required');
-      expect(mockPatientRepo.findById).not.toHaveBeenCalled();
+      expect(mockPatientRepo.findEntityById).not.toHaveBeenCalled();
     });
 
     it('debe retornar error si el status es inválido', async () => {
@@ -80,11 +80,11 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid status');
-      expect(mockPatientRepo.findById).not.toHaveBeenCalled();
+      expect(mockPatientRepo.findEntityById).not.toHaveBeenCalled();
     });
 
     it('debe aceptar status WAITING', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -98,7 +98,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe aceptar status IN_PROGRESS', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -112,7 +112,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe aceptar status UNDER_TREATMENT', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -126,7 +126,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe aceptar status STABILIZED', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -140,7 +140,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe aceptar status DISCHARGED', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -154,7 +154,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe aceptar status TRANSFERRED', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -170,7 +170,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
   describe('Validación de existencia', () => {
     it('debe retornar error si el paciente no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const dto: UpdatePatientStatusDTO = {
         patientId: 'nonexistent-id',
@@ -185,7 +185,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe retornar error si findById retorna undefined', async () => {
-      mockPatientRepo.findById.mockResolvedValue(undefined as any);
+      mockPatientRepo.findEntityById.mockResolvedValue(undefined as any);
 
       const dto: UpdatePatientStatusDTO = {
         patientId: 'undefined-id',
@@ -201,7 +201,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
   describe('Actualización exitosa', () => {
     it('debe actualizar el status del paciente correctamente', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -215,7 +215,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe persistir el paciente después de actualizar', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -230,7 +230,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe retornar success: true en caso exitoso', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -245,7 +245,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe aceptar reason opcional', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -265,7 +265,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
       // El paciente ya está en WAITING por defecto
       expect(mockPatient.status).toBe(PatientStatus.WAITING);
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -281,7 +281,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
     it('debe permitir transición de IN_PROGRESS a UNDER_TREATMENT', async () => {
       mockPatient.updateStatus(PatientStatus.IN_PROGRESS);
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -298,7 +298,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     it('debe permitir transición de UNDER_TREATMENT a STABILIZED', async () => {
       mockPatient.updateStatus(PatientStatus.IN_PROGRESS);
       mockPatient.updateStatus(PatientStatus.UNDER_TREATMENT);
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -316,7 +316,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
       mockPatient.updateStatus(PatientStatus.IN_PROGRESS);
       mockPatient.updateStatus(PatientStatus.UNDER_TREATMENT);
       mockPatient.updateStatus(PatientStatus.STABILIZED);
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -332,7 +332,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
     it('debe permitir transición a TRANSFERRED desde cualquier estado', async () => {
       mockPatient.updateStatus(PatientStatus.UNDER_TREATMENT);
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -349,7 +349,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
   describe('Manejo de errores', () => {
     it('debe capturar errores de persistencia', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockRejectedValue(new Error('Database connection failed'));
 
       const dto: UpdatePatientStatusDTO = {
@@ -364,7 +364,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe capturar errores de findById', async () => {
-      mockPatientRepo.findById.mockRejectedValue(new Error('Query timeout'));
+      mockPatientRepo.findEntityById.mockRejectedValue(new Error('Query timeout'));
 
       const dto: UpdatePatientStatusDTO = {
         patientId: 'patient-123',
@@ -379,7 +379,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe capturar errores del método updateStatus', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       
       // Mock updateStatus to throw error
       jest.spyOn(mockPatient, 'updateStatus').mockImplementation(() => {
@@ -398,7 +398,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe manejar errores desconocidos gracefully', async () => {
-      mockPatientRepo.findById.mockRejectedValue('Unknown error type');
+      mockPatientRepo.findEntityById.mockRejectedValue('Unknown error type');
 
       const dto: UpdatePatientStatusDTO = {
         patientId: 'patient-123',
@@ -415,7 +415,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
   describe('Edge cases', () => {
     it('debe manejar patientId con espacios como inexistente', async () => {
       // HUMAN REVIEW: Consider trimming patientId in use case validation
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const dto: UpdatePatientStatusDTO = {
         patientId: '   ',
@@ -429,7 +429,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
 
     it('debe manejar múltiples actualizaciones consecutivas', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       // Primera actualización
@@ -457,7 +457,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
     it('debe manejar status ya establecido (idempotencia)', async () => {
       mockPatient.updateStatus(PatientStatus.IN_PROGRESS);
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const dto: UpdatePatientStatusDTO = {
@@ -472,3 +472,4 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
   });
 });
+

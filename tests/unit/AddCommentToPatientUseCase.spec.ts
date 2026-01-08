@@ -116,7 +116,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Patient ID is required');
-      expect(mockPatientRepo.findById).not.toHaveBeenCalled();
+      expect(mockPatientRepo.findEntityById).not.toHaveBeenCalled();
     });
 
     it('debe retornar error si patientId es solo espacios', async () => {
@@ -204,7 +204,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe aceptar CommentType.OBSERVATION', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -222,7 +222,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe aceptar CommentType.DIAGNOSIS', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -240,7 +240,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe aceptar CommentType.TREATMENT', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -258,7 +258,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe aceptar CommentType.STATUS_CHANGE', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockNurse);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -276,7 +276,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe aceptar CommentType.TRANSFER', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -294,7 +294,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe aceptar CommentType.DISCHARGE', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -314,7 +314,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
 
   describe('Validación de existencia', () => {
     it('debe retornar error si el paciente no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const dto: AddCommentDTO = {
         patientId: 'nonexistent-patient',
@@ -331,7 +331,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe retornar error si el autor no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(null);
 
       const dto: AddCommentDTO = {
@@ -351,7 +351,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
 
   describe('Creación de comentario exitosa', () => {
     it('debe crear comentario con autor doctor', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -370,7 +370,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe crear comentario con autor nurse', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockNurse);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -396,7 +396,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
         status: UserStatus.ACTIVE,
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockAdmin);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -415,7 +415,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe agregar el comentario al paciente', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -435,7 +435,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe persistir el comentario en el repositorio', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -454,7 +454,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe persistir el paciente actualizado', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -473,7 +473,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe retornar el commentId generado', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -496,7 +496,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
 
   describe('Manejo de errores', () => {
     it('debe capturar errores de findById del paciente', async () => {
-      mockPatientRepo.findById.mockRejectedValue(new Error('Database error'));
+      mockPatientRepo.findEntityById.mockRejectedValue(new Error('Database error'));
 
       const dto: AddCommentDTO = {
         patientId: 'patient-123',
@@ -512,7 +512,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe capturar errores de findById del autor', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockRejectedValue(new Error('User service unavailable'));
 
       const dto: AddCommentDTO = {
@@ -529,7 +529,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe capturar errores de persistencia del comentario', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockRejectedValue(new Error('Failed to save comment'));
 
@@ -547,7 +547,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe capturar errores de persistencia del paciente', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockRejectedValue(new Error('Patient save failed'));
@@ -566,7 +566,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe manejar errores desconocidos gracefully', async () => {
-      mockPatientRepo.findById.mockRejectedValue('Unknown error type');
+      mockPatientRepo.findEntityById.mockRejectedValue('Unknown error type');
 
       const dto: AddCommentDTO = {
         patientId: 'patient-123',
@@ -584,7 +584,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
 
   describe('Edge cases', () => {
     it('debe manejar múltiples comentarios consecutivos', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -621,7 +621,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe manejar contenido largo (> 1000 caracteres)', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
@@ -641,7 +641,7 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
 
     it('debe manejar comentarios de diferentes autores en el mismo paciente', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockCommentRepo.save.mockResolvedValue({} as any);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
@@ -670,4 +670,5 @@ describe('AddCommentToPatientUseCase (TDD)', () => {
     });
   });
 });
+
 

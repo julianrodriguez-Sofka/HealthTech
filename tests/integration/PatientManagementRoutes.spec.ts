@@ -1,7 +1,7 @@
-﻿/**
+/**
  * PatientManagementRoutes Integration Tests (TDD)
  * 
- * Tests de integración para endpoints de gestión avanzada de pacientes:
+ * Tests de integraci�n para endpoints de gesti�n avanzada de pacientes:
  * - PATCH /api/v1/patients/:id/assign-doctor
  * - POST /api/v1/patients/:id/comments
  * - PATCH /api/v1/patients/:id/status
@@ -84,9 +84,14 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     mockPatientRepo = {
       save: jest.fn(),
       findById: jest.fn(),
+      findEntityById: jest.fn(),
+      saveEntity: jest.fn(),
       findAll: jest.fn(),
       findByStatus: jest.fn(),
       findByDoctor: jest.fn(),
+      findByDoctorId: jest.fn(),
+      findAllEntities: jest.fn(),
+      update: jest.fn(),
       delete: jest.fn(),
     } as any;
 
@@ -163,8 +168,8 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
         .expect(401);
     });
 
-    it('debe permitir acceso con token válido de DOCTOR (200)', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+    it('debe permitir acceso con token v�lido de DOCTOR (200)', async () => {
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
 
       const response = await request(app)
@@ -172,7 +177,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({ doctorId: mockDoctor.id });
 
-      expect([200, 400]).toContain(response.status); // 400 si ya está asignado
+      expect([200, 400]).toContain(response.status); // 400 si ya est� asignado
     });
   });
 
@@ -183,7 +188,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe asignar doctor a paciente exitosamente (200)', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
@@ -210,7 +215,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe retornar 400 si paciente no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const response = await request(app)
         .patch('/api/v1/patients/invalid-id/assign-doctor')
@@ -222,7 +227,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe retornar 400 si doctor no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(null);
 
       const response = await request(app)
@@ -235,7 +240,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe manejar errores del repositorio (500)', async () => {
-      mockPatientRepo.findById.mockRejectedValue(new Error('DB error'));
+      mockPatientRepo.findEntityById.mockRejectedValue(new Error('DB error'));
 
       const response = await request(app)
         .patch(`/api/v1/patients/${mockPatient.id}/assign-doctor`)
@@ -253,7 +258,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe agregar comentario exitosamente (201)', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
 
       const mockComment = PatientComment.create({
@@ -296,7 +301,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       expect(response.body.error).toContain('requeridos');
     });
 
-    it('debe rechazar type inválido (400)', async () => {
+    it('debe rechazar type inv�lido (400)', async () => {
       const response = await request(app)
         .post(`/api/v1/patients/${mockPatient.id}/comments`)
         .set('Authorization', `Bearer ${doctorToken}`)
@@ -308,11 +313,11 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
         .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Type inválido');
+      expect(response.body.error).toContain('Type inv�lido');
     });
 
     it('debe manejar errores del repositorio (500)', async () => {
-      mockPatientRepo.findById.mockRejectedValue(new Error('DB error'));
+      mockPatientRepo.findEntityById.mockRejectedValue(new Error('DB error'));
 
       const response = await request(app)
         .post(`/api/v1/patients/${mockPatient.id}/comments`)
@@ -334,7 +339,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe actualizar status exitosamente (200)', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const response = await request(app)
@@ -362,7 +367,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       expect(response.body.error).toContain('status');
     });
 
-    it('debe rechazar status inválido (400)', async () => {
+    it('debe rechazar status inv�lido (400)', async () => {
       const response = await request(app)
         .patch(`/api/v1/patients/${mockPatient.id}/status`)
         .set('Authorization', `Bearer ${doctorToken}`)
@@ -370,10 +375,10 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
         .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Status inválido');
+      expect(response.body.error).toContain('Status inv�lido');
     });
 
-    it('debe aceptar todos los status válidos (200)', async () => {
+    it('debe aceptar todos los status v�lidos (200)', async () => {
       const validStatuses = [
         'waiting',
         'in_progress',
@@ -384,7 +389,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       ];
 
       for (const status of validStatuses) {
-        mockPatientRepo.findById.mockResolvedValue(mockPatient);
+        mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
         mockPatientRepo.save.mockResolvedValue(mockPatient);
 
         const response = await request(app)
@@ -397,7 +402,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe manejar errores del repositorio (500)', async () => {
-      mockPatientRepo.findById.mockRejectedValue(new Error('DB error'));
+      mockPatientRepo.findEntityById.mockRejectedValue(new Error('DB error'));
 
       const response = await request(app)
         .patch(`/api/v1/patients/${mockPatient.id}/status`)
@@ -415,7 +420,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe establecer prioridad manual exitosamente (200)', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const response = await request(app)
@@ -429,9 +434,9 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       expect(mockPatientRepo.save).toHaveBeenCalled();
     });
 
-    it('debe aceptar prioridades válidas 1-5', async () => {
+    it('debe aceptar prioridades v�lidas 1-5', async () => {
       for (let priority = 1; priority <= 5; priority++) {
-        mockPatientRepo.findById.mockResolvedValue(mockPatient);
+        mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
         mockPatientRepo.save.mockResolvedValue(mockPatient);
 
         const response = await request(app)
@@ -469,7 +474,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       }
     });
 
-    it('debe rechazar prioridad no numérica (400)', async () => {
+    it('debe rechazar prioridad no num�rica (400)', async () => {
       const response = await request(app)
         .patch(`/api/v1/patients/${mockPatient.id}/priority`)
         .set('Authorization', `Bearer ${doctorToken}`)
@@ -480,7 +485,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe retornar 404 si paciente no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const response = await request(app)
         .patch('/api/v1/patients/invalid-id/priority')
@@ -493,7 +498,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe manejar errores del repositorio (500)', async () => {
-      mockPatientRepo.findById.mockRejectedValue(new Error('DB error'));
+      mockPatientRepo.findEntityById.mockRejectedValue(new Error('DB error'));
 
       const response = await request(app)
         .patch(`/api/v1/patients/${mockPatient.id}/priority`)
@@ -524,7 +529,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       expect(response.body.count).toBeGreaterThanOrEqual(0);
     });
 
-    it('debe retornar lista vacía si doctor no tiene pacientes (200)', async () => {
+    it('debe retornar lista vac�a si doctor no tiene pacientes (200)', async () => {
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.findByDoctorId.mockResolvedValue([]);
 
@@ -574,7 +579,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
         }),
       ];
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockCommentRepo.findByPatientId.mockResolvedValue(mockComments);
 
       const response = await request(app)
@@ -587,8 +592,8 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
       expect(response.body.data).toHaveLength(2);
     });
 
-    it('debe retornar lista vacía si no hay comentarios (200)', async () => {
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+    it('debe retornar lista vac�a si no hay comentarios (200)', async () => {
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockCommentRepo.findByPatientId.mockResolvedValue([]);
 
       const response = await request(app)
@@ -601,7 +606,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe retornar 404 si paciente no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const response = await request(app)
         .get('/api/v1/patients/invalid-id/comments')
@@ -613,7 +618,7 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
 
     it('debe manejar errores del repositorio (500)', async () => {
-      mockPatientRepo.findById.mockRejectedValue(new Error('DB error'));
+      mockPatientRepo.findEntityById.mockRejectedValue(new Error('DB error'));
 
       const response = await request(app)
         .get(`/api/v1/patients/${mockPatient.id}/comments`)
@@ -624,3 +629,4 @@ describe('Patient Management Routes Integration Tests (TDD)', () => {
     });
   });
 });
+

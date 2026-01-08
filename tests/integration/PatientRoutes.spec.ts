@@ -1,10 +1,10 @@
-ï»¿/**
+/**
  * PatientRoutes Integration Tests (TDD)
  * 
- * Tests de integraciÃ³n para endpoints REST de gestiÃ³n de pacientes.
- * Verifica autenticaciÃ³n, autorizaciÃ³n, y funcionalidad CRUD.
+ * Tests de integración para endpoints REST de gestión de pacientes.
+ * Verifica autenticación, autorización, y funcionalidad CRUD.
  * 
- * HUMAN REVIEW: Validar polÃ­ticas de acceso segÃºn roles mÃ©dicos
+ * HUMAN REVIEW: Validar políticas de acceso según roles médicos
  */
 
 import request from 'supertest';
@@ -119,7 +119,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
       expect(response.body.error).toContain('authorization');
     });
 
-    it('debe rechazar token JWT invÃ¡lido (401)', async () => {
+    it('debe rechazar token JWT inválido (401)', async () => {
       const response = await request(app)
         .get('/api/v1/patients')
         .set('Authorization', 'Bearer invalid.token.here')
@@ -128,7 +128,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
       expect(response.body.success).toBe(false);
     });
 
-    it('debe permitir acceso con token JWT vÃ¡lido (200)', async () => {
+    it('debe permitir acceso con token JWT válido (200)', async () => {
       mockPatientRepo.findAll.mockResolvedValue([]);
 
       const response = await request(app)
@@ -141,7 +141,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
   });
 
   describe('GET /api/v1/patients', () => {
-    it('debe retornar lista vacÃ­a cuando no hay pacientes', async () => {
+    it('debe retornar lista vacía cuando no hay pacientes', async () => {
       mockPatientRepo.findAll.mockResolvedValue([]);
 
       const response = await request(app)
@@ -154,7 +154,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
 
     it('debe retornar lista de pacientes', async () => {
       const mockPatient = Patient.create({
-        name: 'Juan PÃ©rez',
+        name: 'Juan Pérez',
         age: 45,
         gender: 'male',
         symptoms: ['Dolor de pecho'],
@@ -178,7 +178,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
 
       expect(response.body).toHaveLength(1);
       expect(response.body[0]).toMatchObject({
-        name: 'Juan PÃ©rez',
+        name: 'Juan Pérez',
         age: 45,
         gender: 'male',
       });
@@ -198,7 +198,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
 
   describe('POST /api/v1/patients', () => {
     const validPatientData = {
-      name: 'MarÃ­a GarcÃ­a',
+      name: 'María García',
       age: 30,
       gender: 'female' as const,
         symptoms: ['Fiebre'],
@@ -213,7 +213,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
       },
     };
 
-    it('debe crear paciente con datos vÃ¡lidos (201)', async () => {
+    it('debe crear paciente con datos válidos (201)', async () => {
       const savedPatient = Patient.create(validPatientData);
       mockPatientRepo.save.mockResolvedValue(savedPatient);
 
@@ -224,7 +224,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         .expect(201);
 
       expect(response.body).toMatchObject({
-        name: 'MarÃ­a GarcÃ­a',
+        name: 'María García',
         age: 30,
       });
       expect(mockPatientRepo.save).toHaveBeenCalled();
@@ -299,7 +299,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
   describe('GET /api/v1/patients/:id', () => {
     it('debe retornar paciente por ID (200)', async () => {
       const mockPatient = Patient.create({
-        name: 'Carlos LÃ³pez',
+        name: 'Carlos López',
         age: 50,
         gender: 'male',
         symptoms: ['Dolor abdominal'],
@@ -314,7 +314,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         },
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
 
       const response = await request(app)
         .get(`/api/v1/patients/${mockPatient.id}`)
@@ -323,12 +323,12 @@ describe('Patient Routes Integration Tests (TDD)', () => {
 
       expect(response.body).toMatchObject({
         id: mockPatient.id,
-        name: 'Carlos LÃ³pez',
+        name: 'Carlos López',
       });
     });
 
     it('debe retornar 404 si paciente no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const response = await request(app)
         .get('/api/v1/patients/non-existent-id')
@@ -340,7 +340,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
     });
 
     it('debe manejar errores del repositorio (500)', async () => {
-      mockPatientRepo.findById.mockRejectedValue(new Error('Database error'));
+      mockPatientRepo.findEntityById.mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
         .get('/api/v1/patients/some-id')
@@ -353,7 +353,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
 
   describe('PUT /api/v1/patients/:id', () => {
     const updateData = {
-      name: 'Ana MartÃ­nez Updated',
+      name: 'Ana Martínez Updated',
       age: 35,
       gender: 'female',
         symptoms: ['Dolor de cabeza'],
@@ -370,7 +370,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
 
     it('debe actualizar paciente existente (200)', async () => {
       const existingPatient = Patient.create({
-        name: 'Ana MartÃ­nez',
+        name: 'Ana Martínez',
         age: 34,
         gender: 'female',
         symptoms: ['Mareos'],
@@ -385,7 +385,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         },
       });
 
-      mockPatientRepo.findById.mockResolvedValue(existingPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(existingPatient);
       mockPatientRepo.save.mockResolvedValue(existingPatient);
 
       // PUT solo actualiza vitals, status, manualPriority
@@ -411,7 +411,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
     });
 
     it('debe retornar 404 si paciente no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const response = await request(app)
         .put('/api/v1/patients/non-existent-id')
@@ -422,7 +422,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
       expect(response.body.success).toBe(false);
     });
 
-    it('debe rechazar vitals invÃ¡lidos (400)', async () => {
+    it('debe rechazar vitals inválidos (400)', async () => {
       const existingPatient = Patient.create({
         name: 'Test',
         age: 30,
@@ -439,12 +439,12 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         },
       });
 
-      mockPatientRepo.findById.mockResolvedValue(existingPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(existingPatient);
 
-      // Vitals con valores invÃ¡lidos
+      // Vitals con valores inválidos
       const invalidData = {
         vitals: {
-          heartRate: -50, // InvÃ¡lido
+          heartRate: -50, // Inválido
           bloodPressure: '120/80',
           temperature: 37,
           oxygenSaturation: 98,
@@ -478,7 +478,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         },
       });
 
-      mockPatientRepo.findById.mockResolvedValue(existingPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(existingPatient);
       mockPatientRepo.save.mockRejectedValue(new Error('Database error'));
 
       const updates = {
@@ -505,7 +505,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
   describe('DELETE /api/v1/patients/:id', () => {
     it('debe dar de alta paciente existente (200)', async () => {
       const mockPatient = Patient.create({
-        name: 'Pedro GonzÃ¡lez',
+        name: 'Pedro González',
         age: 60,
         gender: 'male',
         symptoms: ['Tos'],
@@ -520,7 +520,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         },
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
 
       const response = await request(app)
@@ -536,7 +536,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
     });
 
     it('debe retornar 404 si paciente no existe', async () => {
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const response = await request(app)
         .delete('/api/v1/patients/non-existent-id')
@@ -563,7 +563,7 @@ describe('Patient Routes Integration Tests (TDD)', () => {
         },
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockPatientRepo.save.mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
@@ -576,5 +576,6 @@ describe('Patient Routes Integration Tests (TDD)', () => {
     });
   });
 });
+
 
 

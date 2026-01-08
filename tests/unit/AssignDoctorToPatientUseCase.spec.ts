@@ -87,13 +87,13 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         doctorId: 'doctor-123',
       };
 
-      mockPatientRepo.findById.mockResolvedValue(null);
+      mockPatientRepo.findEntityById.mockResolvedValue(null);
 
       const result = await useCase.execute(dto);
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Patient not found');
-      expect(mockPatientRepo.findById).toHaveBeenCalledWith('nonexistent-patient');
+      expect(mockPatientRepo.findEntityById).toHaveBeenCalledWith('nonexistent-patient');
     });
 
     it('debe retornar error si el doctor no existe', async () => {
@@ -118,7 +118,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         },
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(null);
 
       const result = await useCase.execute(dto);
@@ -157,7 +157,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
       // Asignar médico previamente
       mockPatient.assignDoctor('doctor-999', 'Dr. Previous');
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
 
       const result = await useCase.execute(dto);
 
@@ -203,7 +203,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         updatedAt: new Date(),
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
 
       const result = await useCase.execute(dto);
@@ -245,7 +245,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         maxPatientLoad: 10,
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
 
       const result = await useCase.execute(dto);
@@ -291,7 +291,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         maxPatientLoad: 15,
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
       mockDoctorRepo.save.mockResolvedValue(undefined);
@@ -338,7 +338,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
 
       const initialLoad = mockDoctor.currentPatientLoad;
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
       mockDoctorRepo.save.mockResolvedValue(undefined);
@@ -380,7 +380,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         maxPatientLoad: 12,
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
       mockDoctorRepo.save.mockResolvedValue(undefined);
@@ -423,7 +423,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         maxPatientLoad: 8,
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
       mockDoctorRepo.save.mockResolvedValue(undefined);
@@ -472,7 +472,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         maxPatientLoad: 10,
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockRejectedValue(new Error('Database connection failed'));
 
@@ -514,7 +514,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         maxPatientLoad: 10,
       });
 
-      mockPatientRepo.findById.mockResolvedValue(mockPatient);
+      mockPatientRepo.findEntityById.mockResolvedValue(mockPatient);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.save.mockResolvedValue(mockPatient);
       mockDoctorRepo.save.mockRejectedValue(new Error('Doctor save failed'));
@@ -531,7 +531,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
         doctorId: 'doctor-unknown',
       };
 
-      mockPatientRepo.findById.mockRejectedValue('Unknown error type');
+      mockPatientRepo.findEntityById.mockRejectedValue('Unknown error type');
 
       const result = await useCase.execute(dto);
 
@@ -540,4 +540,5 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
     });
   });
 });
+
 
