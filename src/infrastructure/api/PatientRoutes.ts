@@ -54,13 +54,115 @@ export class PatientRoutes {
   /**
    * GET /api/v1/patients
    * Listar todos los pacientes
+   * 
+   * HUMAN REVIEW: Este endpoint combina datos de Patient entities y PatientData (legacy)
+   * para retornar pacientes completos con sus signos vitales y prioridad.
+   * Prioriza entidades Patient completas, pero también incluye PatientData para compatibilidad.
    */
   private async listPatients(_req: Request, res: Response): Promise<void> {
     try {
-      const patients = await this.patientRepository.findAll();
+      // HUMAN REVIEW: Obtener ambos tipos de datos para asegurar que todos los pacientes se retornen
+      const patientEntities = await this.patientRepository.findAllEntities();
+      const patientsResult = await this.patientRepository.findAll();
+      
+      // Crear un Set para evitar duplicados por ID
+      const processedIds = new Set<string>();
+      const allPatients: any[] = [];
 
-      // Frontend espera array directo
-      res.status(200).json(patients);
+      // HUMAN REVIEW: Procesar entidades Patient primero (tienen información completa)
+      if (patientEntities.length > 0) {
+        const mappedEntities = await Promise.all(
+          patientEntities.map(async (patient) => {
+            processedIds.add(patient.id);
+            
+            // Obtener vitals más recientes del paciente
+            const vitalsResult = await this.vitalsRepository.findLatest(patient.id);
+            const latestVitals = vitalsResult.isSuccess && vitalsResult.value 
+              ? vitalsResult.value 
+              : null;
+
+            const patientJson = patient.toJSON();
+            
+            // HUMAN REVIEW: Mapear Patient entity al formato esperado por el frontend
+            return {
+              id: patientJson.id,
+              name: patientJson.name,
+              firstName: patientJson.name.split(' ')[0] || '',
+              lastName: patientJson.name.split(' ').slice(1).join(' ') || '',
+              age: patientJson.age,
+              gender: patientJson.gender === 'male' ? 'M' : (patientJson.gender === 'female' ? 'F' : 'OTHER'),
+              identificationNumber: '',
+              symptoms: Array.isArray(patientJson.symptoms) ? patientJson.symptoms.join(', ') : (patientJson.symptoms || ''),
+              vitalSigns: {
+                bloodPressure: patientJson.vitals.bloodPressure || (latestVitals ? `${latestVitals.systolicBP}/80` : '120/80'),
+                heartRate: patientJson.vitals.heartRate || latestVitals?.heartRate || 72,
+                temperature: patientJson.vitals.temperature || latestVitals?.temperature || 36.5,
+                respiratoryRate: patientJson.vitals.respiratoryRate || 16,
+                oxygenSaturation: patientJson.vitals.oxygenSaturation || latestVitals?.oxygenSaturation || 98
+              },
+              priority: patientJson.manualPriority || patientJson.priority,
+              status: patientJson.status.toUpperCase() as PatientStatus,
+              arrivalTime: patientJson.arrivalTime.toISOString(),
+              createdAt: patientJson.createdAt.toISOString(),
+              updatedAt: patientJson.updatedAt.toISOString()
+            };
+          })
+        );
+        
+        allPatients.push(...mappedEntities);
+      }
+
+      // HUMAN REVIEW: Procesar PatientData (legacy) solo si no fueron procesados como entidades
+      if (patientsResult.isSuccess && patientsResult.value) {
+        const legacyPatients = patientsResult.value.filter(p => !processedIds.has(p.id));
+        
+        if (legacyPatients.length > 0) {
+          const mappedLegacy = await Promise.all(
+            legacyPatients.map(async (patient) => {
+              // Obtener vitals más recientes del paciente
+              const vitalsResult = await this.vitalsRepository.findLatest(patient.id);
+              const latestVitals = vitalsResult.isSuccess && vitalsResult.value 
+                ? vitalsResult.value 
+                : null;
+
+              // HUMAN REVIEW: Mapear PatientData al formato esperado por el frontend
+              return {
+                id: patient.id,
+                name: `${patient.firstName} ${patient.lastName}`,
+                firstName: patient.firstName,
+                lastName: patient.lastName,
+                age: this.calculateAge(patient.birthDate),
+                gender: patient.gender,
+                identificationNumber: patient.documentId || '',
+                symptoms: '', // Los síntomas no están en PatientData
+                vitalSigns: {
+                  bloodPressure: latestVitals ? `${latestVitals.systolicBP}/80` : '120/80',
+                  heartRate: latestVitals?.heartRate || 72,
+                  temperature: latestVitals?.temperature || 36.5,
+                  respiratoryRate: 16,
+                  oxygenSaturation: latestVitals?.oxygenSaturation || 98
+                },
+                priority: latestVitals?.isCritical ? 1 : (latestVitals?.isAbnormal ? 2 : 3),
+                status: 'WAITING' as PatientStatus,
+                arrivalTime: patient.registeredAt.toISOString(),
+                createdAt: patient.registeredAt.toISOString(),
+                updatedAt: patient.registeredAt.toISOString()
+              };
+            })
+          );
+          
+          allPatients.push(...mappedLegacy);
+        }
+      }
+
+      // HUMAN REVIEW: Ordenar por fecha de llegada (más recientes primero)
+      allPatients.sort((a, b) => {
+        const dateA = new Date(a.arrivalTime).getTime();
+        const dateB = new Date(b.arrivalTime).getTime();
+        return dateB - dateA;
+      });
+
+      res.status(200).json(allPatients);
     } catch (error) {
       console.error('[PatientRoutes] Error listing patients:', error);
       res.status(500).json({
@@ -68,6 +170,19 @@ export class PatientRoutes {
         error: 'Error interno del servidor al listar pacientes'
       });
     }
+  }
+
+  /**
+   * Calcula la edad desde la fecha de nacimiento
+   */
+  private calculateAge(birthDate: Date): number {
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      return age - 1;
+    }
+    return age;
   }
 
   /**
@@ -120,6 +235,10 @@ export class PatientRoutes {
         this.eventBus
       );
 
+      // HUMAN REVIEW: Si se envía manualPriority, usarlo; de lo contrario calcular automáticamente
+      // REQUISITO HU.md US-003: "El sistema o el Enfermero asigna un nivel de prioridad"
+      const manualPriority = req.body.manualPriority || req.body.priority;
+      
       // Ejecutar el caso de uso
       const result = await useCase.execute({
         firstName,
@@ -136,7 +255,8 @@ export class PatientRoutes {
           consciousnessLevel: vitals.consciousnessLevel,
           painLevel: vitals.painLevel
         },
-        registeredBy: req.body.registeredBy || 'system'
+        registeredBy: req.body.registeredBy || 'system',
+        manualPriority: manualPriority ? Number(manualPriority) : undefined
       });
 
       // Manejar resultado del use case
@@ -154,7 +274,9 @@ export class PatientRoutes {
       console.log(`[Patient Registered] ID: ${output.id}, Priority: P${output.priority}, Name: ${output.firstName} ${output.lastName}`);
       console.log('✅ Observer pattern executed - Doctors have been notified');
 
-      // Retornar paciente registrado en formato compatible con frontend
+      // HUMAN REVIEW: Retornar paciente registrado en formato compatible con frontend
+      // Incluir todos los campos necesarios para que el frontend pueda mostrar el paciente
+      // REQUISITO: Todos los pacientes deben guardarse sin importar su nivel de prioridad
       res.status(201).json({
         id: output.id,
         name: `${output.firstName} ${output.lastName}`,
@@ -162,11 +284,20 @@ export class PatientRoutes {
         lastName: output.lastName,
         age,
         gender,
-        symptoms,
-        vitals,
+        symptoms: Array.isArray(symptoms) ? symptoms : [symptoms],
+        vitals: {
+          bloodPressure: vitals.bloodPressure,
+          heartRate: vitals.heartRate,
+          temperature: vitals.temperature,
+          respiratoryRate: vitals.respiratoryRate || 16,
+          oxygenSaturation: vitals.oxygenSaturation
+        },
         priority: output.priority,
+        status: 'WAITING', // Estado inicial según HU.md
         registeredAt: output.registeredAt,
-        status: 'waiting'
+        arrivalTime: output.registeredAt,
+        createdAt: output.registeredAt,
+        updatedAt: output.registeredAt
       });
     } catch (error: unknown) {
       console.error('[PatientRoutes] Error creating patient:', error);

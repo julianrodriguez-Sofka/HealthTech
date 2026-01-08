@@ -22,12 +22,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
 
   if (!allowedRoles.includes(user.role)) {
     // Redirect to user's default dashboard
-    const defaultRoute = {
-      NURSE: '/nurse',
-      DOCTOR: '/doctor',
-      ADMIN: '/admin'
-    }[user.role];
+    const defaultRoutes: Record<UserRole, string> = {
+      [UserRole.NURSE]: '/nurse',
+      [UserRole.DOCTOR]: '/doctor',
+      [UserRole.ADMIN]: '/admin'
+    };
     
+    const defaultRoute = defaultRoutes[user.role] || '/login';
     return <Navigate to={defaultRoute} replace />;
   }
 

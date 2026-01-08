@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from './Button';
 
+type ButtonVariant = 'primary' | 'secondary' | 'success' | 'danger' | 'ghost' | 'outline';
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -143,6 +145,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   variant = 'danger',
   isLoading = false
 }) => {
+  // Map variant to ButtonVariant
+  const buttonVariant: ButtonVariant = variant === 'warning' ? 'secondary' : variant === 'info' ? 'primary' : variant;
+  
   return (
     <Modal
       isOpen={isOpen}
@@ -156,7 +161,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             {cancelText}
           </Button>
           <Button 
-            variant={variant} 
+            variant={buttonVariant} 
             onClick={onConfirm}
             isLoading={isLoading}
           >
@@ -164,6 +169,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           </Button>
         </>
       }
-    />
+    >
+      <div></div>
+    </Modal>
   );
 };

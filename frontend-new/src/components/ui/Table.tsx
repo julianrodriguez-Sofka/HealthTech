@@ -60,8 +60,11 @@ export const TableHead: React.FC<{
 export const TableCell: React.FC<{ 
   children: React.ReactNode;
   className?: string;
-}> = ({ children, className = '' }) => (
-  <td className={`
+  colSpan?: number;
+}> = ({ children, className = '', colSpan }) => (
+  <td 
+    colSpan={colSpan}
+    className={`
     px-6 py-4 text-sm text-gray-900 dark:text-gray-100
     ${className}
   `}>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Stethoscope, MessageSquare, UserPlus, CheckCircle, Clock } from 'lucide-react';
 import { Button, Modal, Textarea, Select, Badge, Card, useToast, ConfirmModal } from '@/components/ui';
-import { Patient, PatientComment, User } from '@/types';
+import { Patient, PatientComment, User, TriageLevel } from '@/types';
 import { PRIORITY_LABELS, getPriorityBadgeVariant } from '@/lib/constants';
 import { patientApi, userApi } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -171,8 +171,8 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
               >
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Prioridad">
-                    <Badge variant={getPriorityBadgeVariant(patient.priority as any)} dot pulse={patient.priority === 1}>
-                      P{patient.priority} - {PRIORITY_LABELS[patient.priority as any]}
+                    <Badge variant={getPriorityBadgeVariant(patient.priority as TriageLevel)} dot pulse={patient.priority === 1}>
+                      P{patient.priority} - {PRIORITY_LABELS[patient.priority as TriageLevel]}
                     </Badge>
                   </InfoItem>
                   

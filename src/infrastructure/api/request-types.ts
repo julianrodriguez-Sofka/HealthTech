@@ -13,6 +13,8 @@ export interface RegisterPatientBody {
   gender: 'male' | 'female' | 'other';
   symptoms: string[];
   vitals: VitalSigns;
+  priority?: PatientPriority; // Prioridad enviada desde frontend
+  manualPriority?: PatientPriority; // Prioridad manual asignada por enfermero
   assignedNurseId?: string;
   registeredBy?: string;
 }

@@ -77,7 +77,7 @@ export const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ register, erro
           label="Presión Arterial"
           placeholder="120/80"
           leftIcon={<Activity className="w-5 h-5" />}
-          error={errors.vitalSigns?.bloodPressure?.message as string}
+          error={(errors.vitalSigns as any)?.bloodPressure?.message as string | undefined}
           helperText="Formato: Sistólica/Diastólica (ej: 120/80)"
           {...register('vitalSigns.bloodPressure')}
         />
@@ -103,7 +103,7 @@ export const VitalSignsInput: React.FC<VitalSignsInputProps> = ({ register, erro
                   step="0.1"
                   placeholder={`${config.normalRange.min}-${config.normalRange.max}`}
                   leftIcon={config.icon}
-                  error={errors.vitalSigns?.[key]?.message as string}
+                  error={((errors.vitalSigns as any)?.[key] as any)?.message as string | undefined}
                   success={status === 'success'}
                   {...register(`vitalSigns.${key}`, { valueAsNumber: true })}
                 />

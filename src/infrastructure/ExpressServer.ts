@@ -32,6 +32,7 @@ import {
 import { TriageEventBus } from '@domain/observers/TriageEventBus';
 import { DoctorNotificationObserver } from '@application/observers/DoctorNotificationObserver';
 import { MessagingService } from './messaging/MessagingService';
+import { TriageQueueManager } from './messaging/triage-queue-manager';
 
 /**
  * Clase principal del servidor Express
@@ -173,13 +174,15 @@ class ExpressServer {
         timestamp: Date.now(),
         services: {
           database: 'up', // TODO: Implementar check real
-          rabbitmq: 'up', // TODO: Implementar check real
-          socketio: 'up'  // TODO: Implementar check real
+          rabbitmq: this.rabbitMQ?.isConnected() ? 'up' : 'down',
+          socketio: this.wsServer ? 'up' : 'down'
         },
         version: info.version
       };
 
-      const httpStatusCode = status === 'healthy' ? 200 : 503;
+      // HUMAN REVIEW: status() devuelve 'OK', no 'healthy'
+      // Considerar cambiar status() para devolver 'healthy' o ajustar esta lógica
+      const httpStatusCode = (status === 'OK' || status === 'healthy') ? 200 : 503;
       res.status(httpStatusCode).json(healthCheck);
     });
 
@@ -551,6 +554,26 @@ class ExpressServer {
       });
       this.wsServer.initialize(this.httpServer);
       console.log('✅ WebSocket server initialized');
+
+      // 5.1. Conectar consumidor de RabbitMQ con WebSocket Server
+      // HUMAN REVIEW: Este es el puente crítico: mensajes de RabbitMQ → WebSocket → Clientes
+      // REQUISITO HU.md: Notificaciones en tiempo real a médicos (<3 segundos)
+      if (this.rabbitMQ && this.wsServer) {
+        const triageQueueManager = new TriageQueueManager(this.rabbitMQ);
+        
+        // Inicializar colas de RabbitMQ (idempotente - no falla si ya existen)
+        await triageQueueManager.initializeQueues();
+        
+        // Consumir mensajes de alta prioridad y emitirlos vía WebSocket
+        await triageQueueManager.consumeHighPriorityQueue(async (notification) => {
+          console.log(`[RabbitMQ→WebSocket] 🚨 High priority notification received: Patient ${notification.patientId}, Priority ${notification.priorityLevel}`);
+          
+          // Emitir a todos los clientes WebSocket conectados
+          this.wsServer!.emitHighPriorityAlert(notification);
+        });
+        
+        console.log('✅ RabbitMQ → WebSocket bridge initialized (high priority queue consumer active)');
+      }
 
       // 6. Iniciar servidor HTTP
       this.httpServer.listen(this.port, () => {

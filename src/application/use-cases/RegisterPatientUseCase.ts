@@ -21,7 +21,7 @@ import { IVitalsRepository, VitalsData } from '@domain/repositories/IVitalsRepos
 import { TriageEngine } from '@domain/TriageEngine';
 import { IObservable } from '@domain/observers/IObserver';
 import { TriageEvent, createPatientRegisteredEvent } from '@domain/observers/TriageEvents';
-import { PatientPriority } from '@domain/entities/Patient';
+import { Patient, PatientPriority, PatientStatus, VitalSigns } from '@domain/entities/Patient';
 import { Result } from '@shared/Result';
 import { Logger } from '@shared/Logger';
 
@@ -45,6 +45,7 @@ export interface RegisterPatientInput {
     painLevel?: number;
   };
   registeredBy: string; // nurseId
+  manualPriority?: number; // Prioridad asignada manualmente por enfermero (1-5)
 }
 
 /**
@@ -94,20 +95,33 @@ export class RegisterPatientUseCase {
         return Result.fail(validationError);
       }
 
-      // STEP 2: Calcular prioridad usando TriageEngine
-      // HUMAN REVIEW: Este es el core del sistema de triage automatizado
-      const priority = TriageEngine.calculatePriority({
-        heartRate: input.vitals.heartRate,
-        temperature: input.vitals.temperature,
-        oxygenSaturation: input.vitals.oxygenSaturation,
-      });
-
-      this.logger.info('Triage priority calculated', {
-        priority,
-        heartRate: input.vitals.heartRate,
-        temperature: input.vitals.temperature,
-        oxygenSaturation: input.vitals.oxygenSaturation,
-      });
+      // STEP 2: Determinar prioridad
+      // HUMAN REVIEW: REQUISITO HU.md US-003 - El enfermero puede asignar prioridad manualmente
+      // Si se proporciona manualPriority, usarlo; de lo contrario calcular automáticamente
+      let priority: PatientPriority;
+      
+      if (input.manualPriority !== undefined && input.manualPriority >= 1 && input.manualPriority <= 5) {
+        // Prioridad asignada manualmente por enfermero
+        priority = input.manualPriority as PatientPriority;
+        this.logger.info('Manual priority assigned by nurse', {
+          priority,
+          manualPriority: input.manualPriority
+        });
+      } else {
+        // Calcular prioridad automáticamente usando TriageEngine
+        priority = TriageEngine.calculatePriority({
+          heartRate: input.vitals.heartRate,
+          temperature: input.vitals.temperature,
+          oxygenSaturation: input.vitals.oxygenSaturation,
+        });
+        
+        this.logger.info('Triage priority calculated automatically', {
+          priority,
+          heartRate: input.vitals.heartRate,
+          temperature: input.vitals.temperature,
+          oxygenSaturation: input.vitals.oxygenSaturation,
+        });
+      }
 
       // STEP 3: Crear registro de paciente
       const patientId = this.generatePatientId();
@@ -123,12 +137,41 @@ export class RegisterPatientUseCase {
         registeredAt: new Date(),
       };
 
-      // STEP 4: Guardar paciente
+      // STEP 4: Guardar paciente (legacy PatientData para compatibilidad)
       const savePatientResult = await this.patientRepository.save(patientData);
       if (savePatientResult.isFailure) {
         this.logger.error(`Failed to save patient: ${savePatientResult.error?.message || 'Unknown error'}`);
         return Result.fail(savePatientResult.error);
       }
+
+      // STEP 4.5: Crear y guardar entidad Patient completa (HUMAN REVIEW: Necesario para que listPatients funcione correctamente)
+      const now = new Date();
+      const patientEntity = Patient.fromPersistence({
+        id: patientId, // Usar el mismo ID que PatientData
+        name: `${input.firstName} ${input.lastName}`,
+        age: input.age,
+        gender: input.gender,
+        symptoms: input.symptoms,
+        vitals: {
+          heartRate: input.vitals.heartRate,
+          bloodPressure: input.vitals.bloodPressure,
+          temperature: input.vitals.temperature,
+          oxygenSaturation: input.vitals.oxygenSaturation,
+          respiratoryRate: input.vitals.respiratoryRate,
+          consciousnessLevel: input.vitals.consciousnessLevel,
+          painLevel: input.vitals.painLevel
+        },
+        priority: priority,
+        manualPriority: input.manualPriority ? (input.manualPriority as PatientPriority) : undefined,
+        status: PatientStatus.WAITING,
+        comments: [],
+        arrivalTime: now,
+        createdAt: now,
+        updatedAt: now
+      });
+      
+      // Guardar entidad Patient completa
+      await this.patientRepository.saveEntity(patientEntity);
 
       // STEP 5: Guardar signos vitales
       const vitalsId = this.generateVitalsId();
