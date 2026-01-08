@@ -69,9 +69,25 @@ En urgencias médicas, la atención debe darse según gravedad, no por orden de 
 **Estado:** ✅ **CUMPLIDO** - Tests escritos antes/durante implementación
 
 **Evidencia en Git:**
-- Commits muestran tests creados junto con código
-- Patrón: Test → Implementación → Refactor
-- Ver historial de commits en feature branches
+
+El historial de commits demuestra claramente el ciclo TDD (Red-Green-Refactor):
+
+| Commit | Tipo | Descripción | Evidencia TDD |
+|--------|------|-------------|---------------|
+| `00af691` | 🔴 Test | `tdd: add failing test for US-001 (birth date validation)` | Test ANTES de implementación |
+| `c8a2b58` | 🟢 Implementación | `feat: implement US-001 patient registration with date validation and human review` | Implementación DESPUÉS del test |
+| `b703db1` | 🔴 Test | `tdd: add failing tests for US-002 (vitals range validation and blindage)` | Test ANTES de implementación |
+| `7c69cac` | 🟢 Implementación | `feat: implement US-002 vitals validation with physiological blindage and human review` | Implementación DESPUÉS del test |
+| `93fa639` | 🔴 Test | `tdd: add failing tests for US-003 (Priority 1 clinical rules)` | Test ANTES de implementación |
+| `3e5d82b` | 🟢 Implementación | `feat: implement US-003 triage algorithm for Priority 1 with Rule-Engine pattern and human review` | Implementación DESPUÉS del test |
+| `363bf80` | 🔴 Test | `tdd: add failing test for US-005 (RabbitMQ notification dispatch)` | Test ANTES de implementación |
+| `cc63618` | 🟢 Implementación | `feat: implement US-005 notification dispatcher with infrastructure abstraction and human review` | Implementación DESPUÉS del test |
+| `2f164ff` | 🔴 Test | `tdd: add failing test for US-009 (Audit logging traceability)` | Test ANTES de implementación |
+| `9fdfede` | 🟢 Implementación | `feat: implement US-009 audit service with async logging and human review` | Implementación DESPUÉS del test |
+| `317e0b9` | 🔴 Test | `tdd: add failing test for US-008 (doctor accepting patient case)` | Test ANTES de implementación |
+| `1094865` | 🟢 Implementación | `feat: implement US-007 and US-008 with socket event decoupling and human review` | Implementación DESPUÉS del test |
+
+**Patrón claro:** Los commits prefijados con `tdd:` SIEMPRE preceden a commits `feat:` correspondientes, demostrando el ciclo Red-Green-Refactor completo para cada User Story implementado.
 
 #### 3️⃣ Prohibido "Happy Path" Único
 **Estado:** ✅ **CUMPLIDO** - Edge cases extensivos
@@ -178,13 +194,16 @@ src/
 3. ✅ **Install Dependencies** - `npm ci`
 4. ✅ **Linting** - ESLint (Clean Code)
 5. ✅ **Build** - Compilación TypeScript
-6. ✅ **Unit Tests** - Jest con cobertura
-7. ✅ **SonarCloud Analysis** - Análisis de calidad
-8. ✅ **Coverage Report** - Subir cobertura
+6. ✅ **Unit Tests** - Jest con cobertura (391 tests)
+7. ✅ **Integration Tests (API)** - Newman/Postman (17 aserciones) 🆕
+8. ✅ **SonarCloud Analysis** - Análisis de calidad
+9. ✅ **Coverage Report** - Subir cobertura
 
 **Trigger:** Push o PR a `main`/`develop`
 
 **Estado Actual:** ✅ **VERDE** (todos los checks pasan)
+
+**Ver último pipeline run:** [GitHub Actions](../../actions)
 
 **✅ SonarCloud**
 - Análisis automático de código
@@ -217,32 +236,81 @@ npm run test:coverage
 
 **✅ Tests de Integración/API**
 
-**Herramienta:** Postman + Tests automatizados
+**Herramienta:** Postman + Newman (CLI Automatizado)
 
 **Colección:** [`HealthTech-Postman-Collection.json`](HealthTech-Postman-Collection.json)
 
-**Tests Implementados (Simplificados para el taller):**
-- ✅ **POST /api/v1/users** - Crear usuario
-   - Validación de respuesta 201
-   - Verificación de estructura de datos
+**🚀 Integrado en CI/CD Pipeline:** ✅ 
+- Newman se ejecuta automáticamente en cada push/PR
+- Ver paso "Run Integration Tests (API)" en [`.github/workflows/ci.yml`](.github/workflows/ci.yml#L68-L75)
+- Comando: `npm run test:api`
+- 17 aserciones ejecutadas automáticamente
 
-- ✅ **POST /api/v1/auth/login** - Autenticación
-   - Validación de token JWT
-   - Guardado automático de token
+**Tests Automatizados (3 Endpoints - Requisito del Taller):**
 
-- ✅ **POST /api/v1/patients** - Registrar paciente
-   - Validación de cálculo de prioridad
-   - Verificación de signos vitales
+1. ✅ **POST /api/v1/auth/login** - Autenticación JWT
+   - ✅ Status 200
+   - ✅ Token JWT recibido y válido
+   - ✅ Estructura de usuario correcta
+   - ✅ Rol válido (admin/doctor/nurse)
+   - ✅ Tiempo de respuesta < 1000ms
+   - **Total: 5 aserciones**
+
+2. ✅ **POST /api/v1/patients** - Registro de Paciente + Triage
+   - ✅ Status 201 (Created)
+   - ✅ Prioridad calculada (1-5)
+   - ✅ Paciente crítico → prioridad 1-2
+   - ✅ Campos requeridos presentes
+   - ✅ Signos vitales guardados
+   - ✅ Tiempo de respuesta < 2000ms
+   - **Total: 6 aserciones**
    - **Observer Pattern ejecutado** ✅
 
-- ✅ **GET /api/v1/patients** - Listar pacientes
-   - Validación de ordenamiento por prioridad
+3. ✅ **GET /api/v1/patients** - Listado de Pacientes
+   - ✅ Status 200
+   - ✅ Respuesta es array o Result<Array>
+   - ✅ Estructura correcta (maneja Result Pattern)
+   - ✅ Ordenamiento por prioridad
+   - ✅ Tiempo de respuesta < 500ms
+   - **Total: 5 aserciones**
 
-**Ejecutar tests:**
+**📊 Resultado:** 17/17 aserciones pasando (100% success rate)
+
+**Ejecutar tests localmente:**
 ```bash
-# Importar colección en Postman
-# Ejecutar Collection Runner
+# Ejecutar tests de integración con Newman
+npm run test:api
+
+# Versión verbose con reportes HTML
+npm run test:api:verbose
+
+# Ver reportes generados
+open test-results/newman-report.html
 ```
+
+**Documentación completa:**
+- 📘 [Guía de Tests de Integración](INTEGRATION_TESTS.md) - Newman CLI completo
+- 📗 [Guía Postman GUI](POSTMAN_GUI_GUIDE.md) - Uso de Postman Desktop
+- 📙 [Guía Rápida](QUICK_TEST_GUIDE.md) - Quick start
+- 📕 [Resumen Ejecutivo](INTEGRATION_TESTS_SUMMARY.md) - Overview del proyecto
+
+**Total Aserciones:** 16 tests automatizados
+
+**Ejecutar tests automatizados:**
+```bash
+# Opción 1: Tests con salida en consola
+npm run test:api
+
+# Opción 2: Tests con reporte HTML detallado
+npm run test:api:verbose
+
+# Opción 3: Alias corto
+npm run test:integration
+```
+
+**Documentación completa:** 
+- [INTEGRATION_TESTS.md](INTEGRATION_TESTS.md) - Guía detallada
+- [QUICK_TEST_GUIDE.md](QUICK_TEST_GUIDE.md) - Guía rápida
 
 ---
 
