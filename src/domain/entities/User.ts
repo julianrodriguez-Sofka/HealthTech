@@ -146,6 +146,31 @@ export class User {
   }
 
   /**
+   * Update user name
+   * HUMAN REVIEW: Método para actualizar nombre siguiendo principios de encapsulación
+   */
+  updateName(newName: string): void {
+    if (!newName || newName.trim().length < 2) {
+      throw new Error('Name must be at least 2 characters');
+    }
+    this.props.name = newName.trim();
+    this.props.updatedAt = new Date();
+  }
+
+  /**
+   * Update user email
+   * HUMAN REVIEW: Método para actualizar email con validación y normalización
+   */
+  updateEmail(newEmail: string): void {
+    if (!newEmail || !newEmail.includes('@')) {
+      throw new Error('Valid email is required');
+    }
+    // Normalizar email a lowercase para consistencia
+    this.props.email = newEmail.toLowerCase().trim();
+    this.props.updatedAt = new Date();
+  }
+
+  /**
    * Serialization
    */
   toJSON(): UserProps {

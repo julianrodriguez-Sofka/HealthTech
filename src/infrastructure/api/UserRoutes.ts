@@ -260,15 +260,27 @@ export class UserRoutes {
         return;
       }
 
-      // Actualizar campos si se proporcionan
-      if (name && name !== user.name) {
-        // HUMAN REVIEW: Validar formato de nombre
-        Object.assign(user, { name });
+      // HUMAN REVIEW: Actualizar campos usando métodos de la entidad (encapsulación)
+      // Esto respeta los principios de DDD y evita modificar propiedades readonly directamente
+      
+      if (name && name.trim() !== user.name) {
+        try {
+          user.updateName(name);
+        } catch (error) {
+          res.status(400).json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Invalid name format'
+          });
+          return;
+        }
       }
 
-      if (email && email !== user.email) {
+      if (email && email.trim() !== user.email) {
+        // Normalizar email antes de verificar
+        const normalizedEmail = email.toLowerCase().trim();
+        
         // Verificar que el email no esté en uso por otro usuario
-        const existingUser = await this.userRepository.findByEmail(email);
+        const existingUser = await this.userRepository.findByEmail(normalizedEmail);
         if (existingUser && existingUser.id !== id) {
           res.status(409).json({
             success: false,
@@ -276,13 +288,33 @@ export class UserRoutes {
           });
           return;
         }
-        Object.assign(user, { email });
+        
+        try {
+          user.updateEmail(normalizedEmail);
+        } catch (error) {
+          res.status(400).json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Invalid email format'
+          });
+          return;
+        }
       }
 
-      if (password) {
-        // HUMAN REVIEW: Aquí debería hashearse la contraseña
-        // Por ahora se guarda tal cual (NO RECOMENDADO EN PRODUCCIÓN)
-        Object.assign(user, { password });
+      if (password && password.trim() !== '') {
+        // HUMAN REVIEW: Hashear la contraseña antes de guardarla (seguridad)
+        try {
+          const passwordHash = await this.authService.hashPassword(password);
+          // Guardar hash de contraseña usando el método del repositorio
+          if ('savePasswordHash' in this.userRepository && typeof this.userRepository.savePasswordHash === 'function') {
+            await this.userRepository.savePasswordHash(user.id, passwordHash);
+          }
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            error: 'Error al hashear la contraseña'
+          });
+          return;
+        }
       }
 
       await this.userRepository.save(user);
