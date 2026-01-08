@@ -20,7 +20,8 @@ export const DoctorDashboard: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('WAITING');
+  // HUMAN REVIEW: Cambiar filtro por defecto a 'all' para que los pacientes no desaparezcan después de tomar el caso
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [stats, setStats] = useState({
     total: 0,
     myPatients: 0,
@@ -35,7 +36,7 @@ export const DoctorDashboard: React.FC = () => {
     const socket = websocketService.connect();
     
     const handleCriticalPatient = (event: TriageEvent) => {
-      info(`🚨 Nuevo paciente crítico: ${event.patient.name}`, 5000);
+      info(`🚨 Nuevo paciente crítico: ${event.patientName}`, 5000);
       loadPatients();
     };
 
@@ -254,6 +255,10 @@ export const DoctorDashboard: React.FC = () => {
                   { value: 'all', label: 'Todos los estados' },
                   { value: 'WAITING', label: 'En espera' },
                   { value: 'IN_PROGRESS', label: 'En atención' },
+                  { value: 'UNDER_TREATMENT', label: 'En tratamiento' },
+                  { value: 'STABILIZED', label: 'Estabilizado' },
+                  { value: 'DISCHARGED', label: 'Dado de alta' },
+                  { value: 'TRANSFERRED', label: 'Transferido' },
                   { value: 'COMPLETED', label: 'Completado' }
                 ]}
               />
@@ -310,9 +315,17 @@ export const DoctorDashboard: React.FC = () => {
                           P{patient.priority} - {PRIORITY_LABELS[patient.priority as TriageLevel]}
                         </Badge>
                         
-                        <Badge variant="neutral" size="sm">
+                        <Badge variant={
+                          patient.status === 'DISCHARGED' || patient.status === 'COMPLETED' ? 'success' : 
+                          patient.status === 'IN_PROGRESS' || patient.status === 'UNDER_TREATMENT' ? 'info' : 
+                          patient.status === 'STABILIZED' ? 'warning' : 'neutral'
+                        } size="sm">
                           {patient.status === 'WAITING' && 'En espera'}
                           {patient.status === 'IN_PROGRESS' && 'En atención'}
+                          {patient.status === 'UNDER_TREATMENT' && 'En tratamiento'}
+                          {patient.status === 'STABILIZED' && 'Estabilizado'}
+                          {patient.status === 'DISCHARGED' && 'Dado de alta'}
+                          {patient.status === 'TRANSFERRED' && 'Transferido'}
                           {patient.status === 'COMPLETED' && 'Completado'}
                         </Badge>
 

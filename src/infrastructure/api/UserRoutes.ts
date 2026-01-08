@@ -74,6 +74,10 @@ export class UserRoutes {
         shift
       } = req.body;
 
+      // HUMAN REVIEW: Normalizar email a lowercase para consistencia
+      // El CreateUserUseCase también normaliza, pero es mejor hacerlo aquí también para evitar problemas
+      const normalizedEmail = email ? email.toLowerCase().trim() : email;
+
       // Validación básica
       if (!email || !name || !role) {
         res.status(400).json({
@@ -123,7 +127,7 @@ export class UserRoutes {
       );
 
       const result = await createUserUseCase.execute({
-        email,
+        email: normalizedEmail, // HUMAN REVIEW: Usar email normalizado
         name,
         password: req.body.password || 'HealthTech2026!', // Default password if not provided
         role: role as UserRole,

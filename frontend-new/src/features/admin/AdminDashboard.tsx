@@ -84,7 +84,15 @@ export const AdminDashboard: React.FC = () => {
 
   const handleCreateUser = async (data: UserFormData) => {
     try {
-      await userApi.create(data);
+      // HUMAN REVIEW: Mapear UserFormData a CreateUserRequest (los campos coinciden)
+      await userApi.create({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: data.role,
+        department: data.department || undefined,
+        specialization: data.specialization || undefined
+      });
       success('Usuario registrado exitosamente');
       setIsModalOpen(false);
       await loadData();

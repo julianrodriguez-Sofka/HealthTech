@@ -57,7 +57,7 @@ export const PrioritySelector: React.FC<PrioritySelectorProps> = ({ setValue, wa
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {priorityLevels.map((priority) => {
             const isSelected = selectedPriority === priority;
-            const criteria = ESI_CRITERIA[priority];
+            const criteria = ESI_CRITERIA[priority as 1 | 2 | 3 | 4 | 5]; // HUMAN REVIEW: Cast a valor numérico
             const isHovered = showCriteria === priority;
             
             return (
@@ -84,10 +84,10 @@ export const PrioritySelector: React.FC<PrioritySelectorProps> = ({ setValue, wa
                       {priority}
                     </div>
                     <Badge
-                      variant={getPriorityBadgeVariant(priority)}
+                      variant={getPriorityBadgeVariant(priority as 1 | 2 | 3 | 4 | 5)}
                       size="sm"
                     >
-                      {PRIORITY_LABELS[priority]}
+                      {PRIORITY_LABELS[priority as 1 | 2 | 3 | 4 | 5]}
                     </Badge>
                     {isSelected && (
                       <motion.div

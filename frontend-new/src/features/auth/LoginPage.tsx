@@ -19,7 +19,8 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login({ email, role, password: password || 'password123' });
+      // HUMAN REVIEW: LoginCredentials solo necesita email y password, no role
+      await login({ email, password: password || 'password123' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     } finally {
@@ -33,9 +34,11 @@ export const LoginPage: React.FC = () => {
     { role: UserRole.ADMIN, email: 'admin@healthtech.com', name: 'María Rodríguez', color: 'from-purple-500 to-pink-500' }
   ];
 
-  const handleQuickAccess = (userEmail: string, userRole: UserRole) => {
+  const handleQuickAccess = (userEmail: string, _userRole: UserRole) => {
+    // HUMAN REVIEW: Establecer email y contraseña por defecto para acceso rápido
     setEmail(userEmail);
-    setRole(userRole);
+    setPassword('password123');
+    setRole(_userRole); // Mantener role para consistencia con el formulario
   };
 
   return (

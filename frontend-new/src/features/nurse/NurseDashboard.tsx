@@ -6,7 +6,7 @@ import { PatientRegistrationForm } from './components/PatientRegistrationForm';
 import { PatientList } from './components/PatientList';
 import { useAuth } from '@/features/auth/AuthContext';
 import { patientApi } from '@/lib/api';
-import { Patient } from '@/types';
+import { Patient, TriageLevelValue } from '@/types';
 import { PatientFormData } from './schemas/patient.schema';
 
 export const NurseDashboard: React.FC = () => {
@@ -52,7 +52,7 @@ export const NurseDashboard: React.FC = () => {
     try {
       await patientApi.create({
         ...data,
-        priority: data.priority
+        priority: data.priority as TriageLevelValue // HUMAN REVIEW: Asegurar tipo correcto (1-5)
       });
       
       success('Paciente registrado exitosamente');

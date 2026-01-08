@@ -73,9 +73,18 @@ export const UsersTable: React.FC<UsersTableProps> = ({ users, onEdit, onDelete 
               </TableRow>
             ) : (
               users.map((user, index) => {
-                // Normalizar el rol a mayúsculas por si viene en minúsculas del backend
-                const normalizedRole = user.role?.toUpperCase() as UserRole;
-                const roleBadge = ROLE_BADGES[normalizedRole] || { variant: 'neutral' as const, label: user.role || 'Desconocido' };
+                // HUMAN REVIEW: Mapear rol del backend (string) a enum UserRole
+                let normalizedRole: UserRole;
+                if (typeof user.role === 'string') {
+                  const roleLower = user.role.toLowerCase();
+                  if (roleLower === 'admin') normalizedRole = UserRole.ADMIN;
+                  else if (roleLower === 'doctor') normalizedRole = UserRole.DOCTOR;
+                  else if (roleLower === 'nurse') normalizedRole = UserRole.NURSE;
+                  else normalizedRole = UserRole.ADMIN; // fallback
+                } else {
+                  normalizedRole = user.role;
+                }
+                const roleBadge = ROLE_BADGES[normalizedRole] || { variant: 'neutral' as const, label: user.role?.toString() || 'Desconocido' };
                 
                 return (
                   <motion.tr

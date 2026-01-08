@@ -72,7 +72,7 @@ export const patientApi = {
         name: responseData.name || `${responseData.firstName || ''} ${responseData.lastName || ''}`.trim(),
         age: responseData.age || data.age,
         gender: (responseData.gender?.toUpperCase() || data.gender) as 'M' | 'F' | 'OTHER',
-        identificationNumber: data.identificationNumber || '',
+        identificationNumber: responseData.id || responseData.identificationNumber || data.identificationNumber || '', // HUMAN REVIEW: Usar ID como fallback si no hay identificationNumber
         address: data.address,
         phone: data.phone,
         emergencyContact: data.emergencyContact,
@@ -87,6 +87,8 @@ export const patientApi = {
         },
         priority: responseData.priority || data.priority,
         status: (responseData.status?.toUpperCase() || 'WAITING') as PatientStatus,
+        process: responseData.process || undefined,
+        processDetails: responseData.processDetails || undefined,
         arrivalTime: responseData.arrivalTime || responseData.registeredAt || new Date().toISOString(),
         createdAt: responseData.createdAt || responseData.registeredAt || new Date().toISOString(),
         updatedAt: responseData.updatedAt || responseData.registeredAt || new Date().toISOString()
@@ -111,8 +113,12 @@ export const patientApi = {
     }
   },
 
-  assignDoctor: async (patientId: string, doctorId: string): Promise<Patient> => {
-    const response = await apiClient.post<Patient>(`/patients/${patientId}/assign-doctor`, { doctorId });
+  assignDoctor: async (patientId: string, doctorId: string, comment?: string): Promise<Patient> => {
+    // HUMAN REVIEW: Enviar comentario opcional al tomar caso
+    const response = await apiClient.post<Patient>(`/patients/${patientId}/assign-doctor`, { 
+      doctorId,
+      comment: comment || undefined
+    });
     return response.data;
   },
 
@@ -129,6 +135,15 @@ export const patientApi = {
 
   discharge: async (patientId: string): Promise<Patient> => {
     const response = await apiClient.patch<Patient>(`/patients/${patientId}/status`, { status: 'discharged' });
+    return response.data;
+  },
+
+  // HUMAN REVIEW: Nueva funcionalidad para actualizar el proceso del paciente
+  updateProcess: async (patientId: string, process: string, processDetails?: string): Promise<Patient> => {
+    const response = await apiClient.patch<Patient>(`/patients/${patientId}/process`, { 
+      process,
+      processDetails: processDetails || undefined
+    });
     return response.data;
   },
 
@@ -150,14 +165,16 @@ export const patientApi = {
   },
 
   addComment: async (data: AddCommentRequest): Promise<PatientComment> => {
+    // HUMAN REVIEW: Enviar authorId correctamente según lo que espera el backend
     const response = await apiClient.post<PatientComment>(
       `/patients/${data.patientId}/comments`,
       { 
         content: data.content, 
-        authorId: data.doctorId,
-        type: 'observation' // Backend requiere tipo de comentario
+        authorId: data.doctorId, // Backend espera authorId, no doctorId
+        type: 'observation' // Backend requiere tipo de comentario (default: observation)
       }
     );
+    // HUMAN REVIEW: El backend ahora retorna el comentario directamente, no dentro de {success, comment}
     return response.data;
   }
 };

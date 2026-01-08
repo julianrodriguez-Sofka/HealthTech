@@ -54,8 +54,12 @@ export class CreateUserUseCase {
       // Validate input
       this.validateInput(dto);
 
-      // Check if email already exists
-      const existingUser = await this.userRepository.findByEmail(dto.email);
+      // HUMAN REVIEW: Normalizar email a lowercase para consistencia con AuthService.login
+      // Esto asegura que el email se guarde y busque de la misma forma
+      const normalizedEmail = dto.email.toLowerCase().trim();
+
+      // Check if email already exists (usando email normalizado)
+      const existingUser = await this.userRepository.findByEmail(normalizedEmail);
       if (existingUser) {
         return {
           success: false,
@@ -92,9 +96,9 @@ export class CreateUserUseCase {
       // Persist user
       await this.userRepository.save(user);
 
-      // Save password hash
+      // HUMAN REVIEW: Guardar hash de contraseña - CRÍTICO: debe ser await para asegurar que se guarde antes de retornar
       if ('savePasswordHash' in this.userRepository && typeof this.userRepository.savePasswordHash === 'function') {
-        this.userRepository.savePasswordHash(user.id, passwordHash);
+        await this.userRepository.savePasswordHash(user.id, passwordHash);
       }
 
       return {
@@ -160,8 +164,11 @@ export class CreateUserUseCase {
       throw new Error('Specialty and license number required for doctor');
     }
 
+    // HUMAN REVIEW: Usar email normalizado para consistencia
+    const normalizedEmail = dto.email.toLowerCase().trim();
+
     const doctor = Doctor.createDoctor({
-      email: dto.email,
+      email: normalizedEmail,
       name: dto.name,
       status: UserStatus.ACTIVE,
       specialty: dto.specialty,
@@ -186,8 +193,11 @@ export class CreateUserUseCase {
       throw new Error('Area, license number, and shift required for nurse');
     }
 
+    // HUMAN REVIEW: Usar email normalizado para consistencia
+    const normalizedEmail = dto.email.toLowerCase().trim();
+
     return Nurse.createNurse({
-      email: dto.email,
+      email: normalizedEmail,
       name: dto.name,
       status: UserStatus.ACTIVE,
       area: dto.area,
@@ -200,8 +210,11 @@ export class CreateUserUseCase {
    * Create admin user
    */
   private createAdmin(dto: CreateUserDTO): User {
+    // HUMAN REVIEW: Usar email normalizado para consistencia
+    const normalizedEmail = dto.email.toLowerCase().trim();
+
     return User.create({
-      email: dto.email,
+      email: normalizedEmail,
       name: dto.name,
       role: UserRole.ADMIN,
       status: UserStatus.ACTIVE,

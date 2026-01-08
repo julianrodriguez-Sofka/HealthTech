@@ -16,11 +16,11 @@
 import { Router, Request, Response } from 'express';
 import { IPatientRepository } from '@domain/repositories/IPatientRepository';
 import { IVitalsRepository } from '@domain/repositories/IVitalsRepository';
-import { PatientPriority, PatientStatus, VitalSigns } from '@domain/entities/Patient';
+import { PatientPriority, PatientStatus, PatientProcess, VitalSigns } from '@domain/entities/Patient';
 import { RegisterPatientUseCase } from '@application/use-cases/RegisterPatientUseCase';
 import { IObservable } from '@domain/observers/IObserver';
 import { TriageEvent } from '@domain/observers/TriageEvents';
-import { RegisterPatientBody, UpdatePatientBody, AddCommentBody } from './request-types';
+import { RegisterPatientBody, UpdatePatientBody, AddCommentBody, AssignDoctorBody, UpdateProcessBody } from './request-types';
 // HUMAN REVIEW: Importar use cases y repositorios para rutas de management
 import { AssignDoctorToPatientUseCase } from '@application/use-cases/AssignDoctorToPatientUseCase';
 import { AddCommentToPatientUseCase } from '@application/use-cases/AddCommentToPatientUseCase';
@@ -82,6 +82,9 @@ export class PatientRoutes {
     // Establecer prioridad manual del paciente
     this.router.patch('/:id/priority', this.setManualPriority.bind(this));
 
+    // Actualizar proceso/disposición del paciente (HUMAN REVIEW: Nueva funcionalidad)
+    this.router.patch('/:id/process', this.updateProcess.bind(this));
+
     // IMPORTANTE: Las rutas genéricas /:id deben ir AL FINAL
     // para no capturar rutas más específicas como /:id/assign-doctor
     // Obtener paciente por ID
@@ -128,13 +131,13 @@ export class PatientRoutes {
             
             // HUMAN REVIEW: Mapear Patient entity al formato esperado por el frontend
             return {
-              id: patientJson.id,
+              id: patientJson.id, // CRÍTICO: Incluir ID siempre
               name: patientJson.name,
               firstName: patientJson.name.split(' ')[0] || '',
               lastName: patientJson.name.split(' ').slice(1).join(' ') || '',
               age: patientJson.age,
               gender: patientJson.gender === 'male' ? 'M' : (patientJson.gender === 'female' ? 'F' : 'OTHER'),
-              identificationNumber: '',
+              identificationNumber: patientJson.id || '', // HUMAN REVIEW: Usar ID como identificationNumber por defecto
               symptoms: Array.isArray(patientJson.symptoms) ? patientJson.symptoms.join(', ') : (patientJson.symptoms || ''),
               vitalSigns: {
                 bloodPressure: patientJson.vitals.bloodPressure || (latestVitals ? `${latestVitals.systolicBP}/80` : '120/80'),
@@ -145,6 +148,10 @@ export class PatientRoutes {
               },
               priority: patientJson.manualPriority || patientJson.priority,
               status: patientJson.status.toUpperCase() as PatientStatus,
+              process: patientJson.process || undefined,
+              processDetails: patientJson.processDetails || undefined,
+              doctorId: patientJson.assignedDoctorId,
+              doctorName: patientJson.assignedDoctorName,
               arrivalTime: patientJson.arrivalTime.toISOString(),
               createdAt: patientJson.createdAt.toISOString(),
               updatedAt: patientJson.updatedAt.toISOString()
@@ -170,13 +177,13 @@ export class PatientRoutes {
 
               // HUMAN REVIEW: Mapear PatientData al formato esperado por el frontend
               return {
-                id: patient.id,
+                id: patient.id, // CRÍTICO: Asegurar que el ID se incluye siempre
                 name: `${patient.firstName} ${patient.lastName}`,
                 firstName: patient.firstName,
                 lastName: patient.lastName,
                 age: this.calculateAge(patient.birthDate),
                 gender: patient.gender,
-                identificationNumber: patient.documentId || '',
+                identificationNumber: patient.documentId || patient.id || '', // HUMAN REVIEW: Usar ID si no hay documentId
                 symptoms: '', // Los síntomas no están en PatientData
                 vitalSigns: {
                   bloodPressure: latestVitals ? `${latestVitals.systolicBP}/80` : '120/80',
@@ -187,6 +194,8 @@ export class PatientRoutes {
                 },
                 priority: latestVitals?.isCritical ? 1 : (latestVitals?.isAbnormal ? 2 : 3),
                 status: 'WAITING' as PatientStatus,
+                process: undefined,
+                processDetails: undefined,
                 arrivalTime: patient.registeredAt.toISOString(),
                 createdAt: patient.registeredAt.toISOString(),
                 updatedAt: patient.registeredAt.toISOString()
@@ -318,15 +327,16 @@ export class PatientRoutes {
       console.log('✅ Observer pattern executed - Doctors have been notified');
 
       // HUMAN REVIEW: Retornar paciente registrado en formato compatible con frontend
-      // Incluir todos los campos necesarios para que el frontend pueda mostrar el paciente
+      // CRÍTICO: Incluir ID siempre, todos los campos necesarios para que el frontend pueda mostrar el paciente
       // REQUISITO: Todos los pacientes deben guardarse sin importar su nivel de prioridad
       res.status(201).json({
-        id: output.id,
+        id: output.id, // CRÍTICO: El ID es generado por RegisterPatientUseCase.generatePatientId()
         name: `${output.firstName} ${output.lastName}`,
         firstName: output.firstName,
         lastName: output.lastName,
         age,
         gender,
+        identificationNumber: output.id, // HUMAN REVIEW: Usar ID como identificationNumber por defecto
         symptoms: Array.isArray(symptoms) ? symptoms : [symptoms],
         vitals: {
           bloodPressure: vitals.bloodPressure,
@@ -337,6 +347,8 @@ export class PatientRoutes {
         },
         priority: output.priority,
         status: 'WAITING', // Estado inicial según HU.md
+        process: undefined,
+        processDetails: undefined,
         registeredAt: output.registeredAt,
         arrivalTime: output.registeredAt,
         createdAt: output.registeredAt,
@@ -567,15 +579,15 @@ export class PatientRoutes {
    * "Un Médico selecciona un paciente de la lista para tomar su caso"
    * "Una vez que el Médico toma el caso, este se marca como 'en atención'"
    */
-  private async assignDoctor(req: Request, res: Response): Promise<void> {
-    if (!this.doctorRepository) {
-      res.status(500).json({ success: false, error: 'Doctor repository not available' });
+  private async assignDoctor(req: Request<{ id: string }, Record<string, never>, AssignDoctorBody>, res: Response): Promise<void> {
+    if (!this.doctorRepository || !this.patientCommentRepository || !this.userRepository) {
+      res.status(500).json({ success: false, error: 'Repositories not available' });
       return;
     }
 
     try {
       const { id } = req.params;
-      const { doctorId } = req.body;
+      const { doctorId, comment } = req.body as AssignDoctorBody;
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Patient ID is required' });
@@ -587,12 +599,34 @@ export class PatientRoutes {
         return;
       }
 
+      // HUMAN REVIEW: Asignar doctor usando use case
       const useCase = new AssignDoctorToPatientUseCase(this.patientRepository, this.doctorRepository);
       const result = await useCase.execute({ patientId: id, doctorId });
 
       if (!result.success) {
         res.status(400).json({ success: false, error: result.error });
         return;
+      }
+
+      // HUMAN REVIEW: Si se proporciona un comentario, agregarlo automáticamente
+      if (comment && comment.trim()) {
+        try {
+          const addCommentUseCase = new AddCommentToPatientUseCase(
+            this.patientRepository,
+            this.patientCommentRepository,
+            this.userRepository
+          );
+          
+          await addCommentUseCase.execute({
+            patientId: id,
+            authorId: doctorId,
+            content: comment.trim(),
+            type: CommentType.OBSERVATION
+          });
+        } catch (commentError) {
+          // HUMAN REVIEW: No fallar la asignación si falla agregar comentario
+          console.warn('[PatientRoutes] Failed to add comment during assignment:', commentError);
+        }
       }
 
       const updatedPatient = await this.patientRepository.findEntityById(id);
@@ -620,6 +654,8 @@ export class PatientRoutes {
         },
         priority: patientJson.manualPriority || patientJson.priority,
         status: patientJson.status.toUpperCase(),
+        process: patientJson.process || undefined,
+        processDetails: patientJson.processDetails || undefined,
         doctorId: patientJson.assignedDoctorId,
         doctorName: patientJson.assignedDoctorName,
         arrivalTime: patientJson.arrivalTime.toISOString(),
@@ -640,7 +676,7 @@ export class PatientRoutes {
    * Agregar comentario a paciente
    * HU.md US-006: "Los Médicos pueden añadir comentarios al expediente de un paciente"
    */
-  private async addComment(req: Request, res: Response): Promise<void> {
+  private async addComment(req: Request<{ id: string }, Record<string, never>, AddCommentBody>, res: Response): Promise<void> {
     if (!this.patientCommentRepository || !this.userRepository) {
       res.status(500).json({ success: false, error: 'Repositories not available' });
       return;
@@ -648,7 +684,7 @@ export class PatientRoutes {
 
     try {
       const { id } = req.params;
-      const { authorId, content, type } = req.body;
+      const { authorId, content, type } = req.body as AddCommentBody & { authorId: string }; // HUMAN REVIEW: Asegurar que authorId esté presente
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Patient ID is required' });
@@ -678,11 +714,25 @@ export class PatientRoutes {
         return;
       }
 
-      res.status(201).json({
-        success: true,
-        comment: result.comment,
-        message: 'Comentario agregado exitosamente'
-      });
+      // HUMAN REVIEW: Mapear el comentario al formato esperado por el frontend
+      // El frontend espera el comentario directamente, no dentro de un objeto success
+      if (!result.comment) {
+        res.status(500).json({ success: false, error: 'Comment was not created properly' });
+        return;
+      }
+
+      const commentJson = result.comment.toJSON();
+      const mappedComment = {
+        id: commentJson.id,
+        patientId: id,
+        doctorId: commentJson.authorId,
+        doctorName: commentJson.authorName,
+        content: commentJson.content,
+        createdAt: commentJson.createdAt.toISOString()
+      };
+
+      // HUMAN REVIEW: Retornar el comentario directamente para que frontend pueda hacer response.data
+      res.status(201).json(mappedComment);
     } catch (error) {
       console.error('[PatientRoutes] Error adding comment:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor al agregar comentario' });
@@ -715,11 +765,22 @@ export class PatientRoutes {
 
       const comments = await this.patientCommentRepository.findByPatientId(id);
 
-      res.status(200).json({
-        success: true,
-        data: comments,
-        count: comments.length
+      // HUMAN REVIEW: Mapear comentarios al formato esperado por el frontend
+      // El frontend espera un array directo de comentarios, no dentro de {success, data}
+      const mappedComments = comments.map(comment => {
+        const commentJson = comment.toJSON();
+        return {
+          id: commentJson.id,
+          patientId: commentJson.patientId,
+          doctorId: commentJson.authorId,
+          doctorName: commentJson.authorName,
+          content: commentJson.content,
+          createdAt: commentJson.createdAt.toISOString()
+        };
       });
+
+      // HUMAN REVIEW: Retornar array directo para compatibilidad con frontend (getComments espera array)
+      res.status(200).json(mappedComments);
     } catch (error) {
       console.error('[PatientRoutes] Error getting patient comments:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor al obtener comentarios' });
@@ -806,6 +867,95 @@ export class PatientRoutes {
     } catch (error) {
       console.error('[PatientRoutes] Error setting manual priority:', error);
       res.status(500).json({ success: false, error: 'Error interno del servidor al establecer prioridad' });
+    }
+  }
+
+  /**
+   * PATCH /api/v1/patients/:id/process
+   * Actualizar proceso/disposición del paciente
+   * HUMAN REVIEW: Nueva funcionalidad para asignar proceso al paciente
+   * Opciones: dar de alta, hospitalizar, remitir, UCI, etc.
+   */
+  private async updateProcess(req: Request<{ id: string }, Record<string, never>, UpdateProcessBody>, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { process, processDetails } = req.body as UpdateProcessBody;
+
+      if (!id) {
+        res.status(400).json({ success: false, error: 'Patient ID is required' });
+        return;
+      }
+
+      if (!process) {
+        res.status(400).json({ success: false, error: 'process es requerido' });
+        return;
+      }
+
+      // HUMAN REVIEW: Validar que el proceso sea válido según PatientProcess enum
+      const validProcesses = Object.values(PatientProcess);
+      if (!validProcesses.includes(process as PatientProcess)) {
+        res.status(400).json({ 
+          success: false, 
+          error: `process inválido. Debe ser uno de: ${validProcesses.join(', ')}` 
+        });
+        return;
+      }
+
+      const patient = await this.patientRepository.findEntityById(id);
+      if (!patient) {
+        res.status(404).json({ success: false, error: `Paciente con ID ${id} no encontrado` });
+        return;
+      }
+
+      // HUMAN REVIEW: Convertir string a enum PatientProcess
+      const processEnum = process as PatientProcess;
+      
+      // HUMAN REVIEW: Si el proceso es 'none', limpiar proceso; de lo contrario, asignarlo
+      if (processEnum === PatientProcess.NONE) {
+        patient.clearProcess();
+      } else {
+        patient.setProcess(processEnum, processDetails || undefined);
+      }
+      
+      await this.patientRepository.saveEntity(patient);
+
+      const patientJson = patient.toJSON();
+      const mappedPatient = {
+        id: patientJson.id,
+        name: patientJson.name,
+        firstName: patientJson.name.split(' ')[0] || '',
+        lastName: patientJson.name.split(' ').slice(1).join(' ') || '',
+        age: patientJson.age,
+        gender: patientJson.gender === 'male' ? 'M' : (patientJson.gender === 'female' ? 'F' : 'OTHER'),
+        identificationNumber: '',
+        symptoms: Array.isArray(patientJson.symptoms) ? patientJson.symptoms.join(', ') : (patientJson.symptoms || ''),
+        vitalSigns: {
+          bloodPressure: patientJson.vitals.bloodPressure || '120/80',
+          heartRate: patientJson.vitals.heartRate || 72,
+          temperature: patientJson.vitals.temperature || 36.5,
+          respiratoryRate: patientJson.vitals.respiratoryRate || 16,
+          oxygenSaturation: patientJson.vitals.oxygenSaturation || 98
+        },
+        priority: patientJson.manualPriority || patientJson.priority,
+        status: patientJson.status.toUpperCase(),
+        process: patientJson.process || undefined,
+        processDetails: patientJson.processDetails || undefined,
+        doctorId: patientJson.assignedDoctorId,
+        doctorName: patientJson.assignedDoctorName,
+        arrivalTime: patientJson.arrivalTime.toISOString(),
+        createdAt: patientJson.createdAt.toISOString(),
+        updatedAt: patientJson.updatedAt.toISOString()
+      };
+
+      res.status(200).json({
+        success: true,
+        ...mappedPatient,
+        message: `Proceso actualizado a ${process}`
+      });
+    } catch (error) {
+      console.error('[PatientRoutes] Error updating process:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor al actualizar proceso';
+      res.status(500).json({ success: false, error: errorMessage });
     }
   }
 
