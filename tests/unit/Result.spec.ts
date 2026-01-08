@@ -326,4 +326,73 @@ describe('Result Pattern', () => {
       expect(result.value).toBeNull();
     });
   });
+
+  describe('onSuccess y onFailure callbacks', () => {
+    it('debe ejecutar onSuccess callback cuando es success', () => {
+      const mockCallback = jest.fn();
+      const result = Result.ok('test value');
+
+      result.onSuccess(mockCallback);
+
+      expect(mockCallback).toHaveBeenCalledWith('test value');
+      expect(mockCallback).toHaveBeenCalledTimes(1);
+    });
+
+    it('NO debe ejecutar onSuccess callback cuando es failure', () => {
+      const mockCallback = jest.fn();
+      const result = Result.fail(new Error('test error'));
+
+      result.onSuccess(mockCallback);
+
+      expect(mockCallback).not.toHaveBeenCalled();
+    });
+
+    it('debe ejecutar onFailure callback cuando es failure', () => {
+      const mockCallback = jest.fn();
+      const error = new Error('test error');
+      const result = Result.fail(error);
+
+      result.onFailure(mockCallback);
+
+      expect(mockCallback).toHaveBeenCalledWith(error);
+      expect(mockCallback).toHaveBeenCalledTimes(1);
+    });
+
+    it('NO debe ejecutar onFailure callback cuando es success', () => {
+      const mockCallback = jest.fn();
+      const result = Result.ok('test value');
+
+      result.onFailure(mockCallback);
+
+      expect(mockCallback).not.toHaveBeenCalled();
+    });
+
+    it('debe retornar el mismo Result después de onSuccess', () => {
+      const original = Result.ok('value');
+      const afterCallback = original.onSuccess(() => {});
+
+      expect(afterCallback).toBe(original);
+      expect(afterCallback.isSuccess).toBe(true);
+    });
+
+    it('debe retornar el mismo Result después de onFailure', () => {
+      const error = new Error('test');
+      const original = Result.fail(error);
+      const afterCallback = original.onFailure(() => {});
+
+      expect(afterCallback).toBe(original);
+      expect(afterCallback.isFailure).toBe(true);
+    });
+
+    it('debe permitir encadenar onSuccess y onFailure', () => {
+      const successCallback = jest.fn();
+      const failureCallback = jest.fn();
+      const result = Result.ok('test');
+
+      result.onSuccess(successCallback).onFailure(failureCallback);
+
+      expect(successCallback).toHaveBeenCalled();
+      expect(failureCallback).not.toHaveBeenCalled();
+    });
+  });
 });
