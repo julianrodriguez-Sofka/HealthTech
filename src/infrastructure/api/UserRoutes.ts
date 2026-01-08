@@ -16,6 +16,8 @@ import { AuthService } from '../../application/services/AuthService';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { UserRole, UserStatus } from '../../domain/entities/User';
+import { MedicalSpecialty } from '../../domain/entities/Doctor';
+import { NurseArea } from '../../domain/entities/Nurse';
 import { CreateUserBody, UpdateUserProfileBody } from './request-types';
 
 export class UserRoutes {
@@ -125,11 +127,11 @@ export class UserRoutes {
         name,
         password: req.body.password || 'HealthTech2026!', // Default password if not provided
         role: role as UserRole,
-        specialty,
+        specialty: specialty as MedicalSpecialty | undefined,
         licenseNumber,
         maxPatientLoad,
-        area,
-        shift
+        area: area as NurseArea | undefined,
+        shift: shift as 'morning' | 'afternoon' | 'night' | undefined
       });
 
       if (!result.success) {
@@ -169,7 +171,10 @@ export class UserRoutes {
         filters.status = status as string;
       }
 
-      const users = await this.userRepository.findAll(filters);
+      const users = await this.userRepository.findAll({
+        role: role as UserRole | undefined,
+        status: status as UserStatus | undefined
+      });
 
       res.status(200).json({
         success: true,

@@ -14,6 +14,7 @@ export interface RegisterPatientBody {
   symptoms: string[];
   vitals: VitalSigns;
   assignedNurseId?: string;
+  registeredBy?: string;
 }
 
 export interface UpdatePatientBody {
@@ -34,6 +35,7 @@ export interface CreateUserBody {
   role?: UserRole;
   specialty?: string;
   licenseNumber?: string;
+  maxPatientLoad?: number;
   area?: string;
   shift?: string;
 }

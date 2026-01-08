@@ -6,7 +6,7 @@
  */
 
 import { IPatientRepository } from '../../domain/repositories/IPatientRepository';
-import { PatientStatus } from '../../domain/entities/Patient';
+import { PatientStatus, Patient } from '../../domain/entities/Patient';
 
 export interface UpdatePatientStatusDTO {
   patientId: string;
@@ -49,21 +49,19 @@ export class UpdatePatientStatusUseCase {
       }
 
       // Fetch patient
-      const patientResult = await this.patientRepository.findById(dto.patientId);
-      if (!patientResult) {
+      const patient = await this.patientRepository.findEntityById(dto.patientId);
+      if (!patient) {
         return {
           success: false,
           error: `Patient not found: ${dto.patientId}`,
         };
       }
 
-      const patient = patientResult;
-
       // Update status
       patient.updateStatus(dto.newStatus);
 
       // Persist
-      await this.patientRepository.save(patient);
+      await this.patientRepository.saveEntity(patient);
 
       // HUMAN REVIEW: Emit domain event for notifications
       // await this.eventBus.publish(new PatientStatusChangedEvent(patient));

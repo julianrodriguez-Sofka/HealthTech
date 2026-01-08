@@ -45,7 +45,7 @@ export class AddCommentToPatientUseCase {
       this.validateInput(dto);
 
       // Verify patient exists
-      const patient = await this.patientRepository.findById(dto.patientId);
+      const patient = await this.patientRepository.findEntityById(dto.patientId);
       if (!patient) {
         return {
           success: false,
@@ -80,7 +80,7 @@ export class AddCommentToPatientUseCase {
 
       // Persist
       await this.commentRepository.save(comment);
-      await this.patientRepository.save(patient);
+      await this.patientRepository.saveEntity(patient);
 
       return {
         success: true,

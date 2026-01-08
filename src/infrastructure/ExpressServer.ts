@@ -543,7 +543,7 @@ class ExpressServer {
 
       // 2. Cerrar WebSocket server
       if (this.wsServer) {
-        await this.wsServer.stop();
+        this.wsServer.close();
         console.log('✅ WebSocket server closed');
       }
 

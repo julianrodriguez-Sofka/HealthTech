@@ -121,7 +121,8 @@ export class VitalsService {
     // HUMAN REVIEW: Validación 2 - Verificar que el paciente existe
     const patientResult = await this.patientRepository.findById(vitals.patientId);
     if (patientResult.isFailure) {
-      return Result.fail(patientResult.error);
+      // Convert generic Error to PatientNotFoundError
+      return Result.fail(new PatientNotFoundError(vitals.patientId));
     }
     if (!patientResult.value) {
       return Result.fail(new PatientNotFoundError(vitals.patientId));

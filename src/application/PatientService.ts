@@ -100,7 +100,12 @@ export class PatientService {
     // HUMAN REVIEW: Persistir en repositorio
     const saveResult = await this.patientRepository.save(patient);
     if (saveResult.isFailure) {
-      return Result.fail(saveResult.error);
+      // Convert generic Error to PatientValidationError
+      return Result.fail(new PatientValidationError(
+        'patient',
+        'SAVE_FAILED',
+        saveResult.error.message || 'Failed to save patient'
+      ));
     }
 
     // HUMAN REVIEW: Mapear a DTO de respuesta

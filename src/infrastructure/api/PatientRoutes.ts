@@ -344,7 +344,7 @@ export class PatientRoutes {
       vitals.temperature < 35 ||
       vitals.respiratoryRate > 24 ||
       vitals.respiratoryRate < 10 ||
-      vitals.painLevel >= 8
+      (vitals.painLevel !== undefined && vitals.painLevel >= 8)
     ) {
       return PatientPriority.P2;
     }
@@ -356,7 +356,7 @@ export class PatientRoutes {
       vitals.heartRate < 55 ||
       vitals.temperature > 38.5 ||
       vitals.temperature < 36 ||
-      vitals.painLevel >= 6
+      (vitals.painLevel !== undefined && vitals.painLevel >= 6)
     ) {
       return PatientPriority.P3;
     }
@@ -365,7 +365,7 @@ export class PatientRoutes {
     if (
       vitals.oxygenSaturation < 96 ||
       vitals.heartRate > 100 ||
-      vitals.painLevel >= 4
+      (vitals.painLevel !== undefined && vitals.painLevel >= 4)
     ) {
       return PatientPriority.P4;
     }

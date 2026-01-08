@@ -9,6 +9,8 @@
 
 import { IPatientRepository } from '../../domain/repositories/IPatientRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
+import { Patient } from '../../domain/entities/Patient';
+import { Doctor } from '../../domain/entities/Doctor';
 
 export interface AssignDoctorDTO {
   patientId: string;
@@ -47,7 +49,7 @@ export class AssignDoctorToPatientUseCase {
       }
 
       // Fetch patient
-      const patient = await this.patientRepository.findById(dto.patientId);
+      const patient = await this.patientRepository.findEntityById(dto.patientId);
       if (!patient) {
         return {
           success: false,
@@ -85,7 +87,7 @@ export class AssignDoctorToPatientUseCase {
       doctor.assignPatient();
 
       // Persist changes
-      await this.patientRepository.save(patient);
+      await this.patientRepository.saveEntity(patient);
       await this.doctorRepository.save(doctor);
 
       // HUMAN REVIEW: Emit domain event for real-time notifications

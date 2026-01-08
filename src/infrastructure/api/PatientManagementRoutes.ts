@@ -288,7 +288,8 @@ export class PatientManagementRoutes {
       }
 
       // Validar prioridad (1-5)
-      const priorityNum = parseInt(priority, 10);
+      const priorityStr = typeof priority === 'string' ? priority : String(priority);
+      const priorityNum = parseInt(priorityStr, 10);
       if (isNaN(priorityNum) || priorityNum < 1 || priorityNum > 5) {
         res.status(400).json({
           success: false,
@@ -298,7 +299,7 @@ export class PatientManagementRoutes {
       }
 
       // Obtener paciente
-      const patient = await this.patientRepository.findById(id);
+      const patient = await this.patientRepository.findEntityById(id);
 
       if (!patient) {
         res.status(404).json({
@@ -312,7 +313,7 @@ export class PatientManagementRoutes {
       patient.setManualPriority(priorityNum);
 
       // Persistir
-      await this.patientRepository.save(patient);
+      await this.patientRepository.saveEntity(patient);
 
       res.status(200).json({
         success: true,
