@@ -17,16 +17,30 @@ export default defineConfig({
   server: {
     port: 3003,
     host: '0.0.0.0',
+    strictPort: true,
+    watch: {
+      usePolling: true
+    },
     proxy: {
       '/api': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
+        target: process.env.DOCKER_ENV === 'true' ? 'http://app:3000' : 'http://localhost:3000',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('Proxy error:', err);
+          });
+        }
       },
       '/socket.io': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
+        target: process.env.DOCKER_ENV === 'true' ? 'http://app:3000' : 'http://localhost:3000',
         ws: true,
-        changeOrigin: true
+        changeOrigin: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('WebSocket proxy error:', err);
+          });
+        }
       }
     }
   }

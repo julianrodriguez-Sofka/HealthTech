@@ -53,25 +53,23 @@ export const patientApi = {
   },
 
   assignDoctor: async (patientId: string, doctorId: string): Promise<Patient> => {
-    const response = await apiClient.patch<Patient>(`/patients/${patientId}/assign`, { doctorId });
+    const response = await apiClient.post<Patient>(`/patients/${patientId}/assign-doctor`, { doctorId });
     return response.data;
   },
 
-  reassignDoctor: async (patientId: string, newDoctorId: string): Promise<Patient> => {
-    const response = await apiClient.patch<Patient>(`/patients/${patientId}/reassign`, { 
-      doctorId: newDoctorId 
-    });
+  updateStatus: async (patientId: string, status: string): Promise<Patient> => {
+    const response = await apiClient.patch<Patient>(`/patients/${patientId}/status`, { status });
     return response.data;
   },
 
   discharge: async (patientId: string): Promise<Patient> => {
-    const response = await apiClient.patch<Patient>(`/patients/${patientId}/discharge`);
+    const response = await apiClient.patch<Patient>(`/patients/${patientId}/status`, { status: 'discharged' });
     return response.data;
   },
 
   setPriority: async (patientId: string, priority: number): Promise<Patient> => {
     const response = await apiClient.patch<Patient>(`/patients/${patientId}/priority`, { 
-      priority 
+      manualPriority: priority 
     });
     return response.data;
   },
@@ -89,7 +87,11 @@ export const patientApi = {
   addComment: async (data: AddCommentRequest): Promise<PatientComment> => {
     const response = await apiClient.post<PatientComment>(
       `/patients/${data.patientId}/comments`,
-      { content: data.content, doctorId: data.doctorId }
+      { 
+        content: data.content, 
+        authorId: data.doctorId,
+        type: 'observation' // Backend requiere tipo de comentario
+      }
     );
     return response.data;
   }
@@ -114,8 +116,8 @@ export const userApi = {
 
   getDoctors: async (): Promise<User[]> => {
     try {
-      const response = await apiClient.get<any>('/users/doctors');
-      // Backend devuelve { success: true, data: doctors[] }
+      const response = await apiClient.get<any>('/users', { params: { role: 'doctor' } });
+      // Backend devuelve { success: true, data: users[], count: number }
       if (response.data && response.data.data && Array.isArray(response.data.data)) {
         return response.data.data;
       }
@@ -244,7 +246,11 @@ export const userApi = {
 export const doctorApi = {
   getMyPatients: async (doctorId: string): Promise<Patient[]> => {
     try {
-      const response = await apiClient.get<Patient[]>(`/doctors/${doctorId}/patients`);
+      const response = await apiClient.get<any>(`/patients/assigned/${doctorId}`);
+      // Backend puede devolver { success: true, patients: [] }
+      if (response.data && response.data.patients && Array.isArray(response.data.patients)) {
+        return response.data.patients;
+      }
       return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
       console.error('Error fetching doctor patients:', error);

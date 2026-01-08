@@ -166,8 +166,9 @@ services:
     ports:
       - "3003:3003"  # Vite dev server
     environment:
+      - DOCKER_ENV=true
       - VITE_API_URL=http://localhost:3000/api/v1
-      - VITE_BACKEND_URL=http://app:3000
+      - VITE_SOCKET_URL=http://localhost:3000
     depends_on:
       - app
     volumes:
