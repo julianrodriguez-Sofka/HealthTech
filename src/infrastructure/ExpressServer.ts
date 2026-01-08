@@ -21,6 +21,7 @@ import { PatientRoutes } from './api/PatientRoutes';
 import { PatientManagementRoutes } from './api/PatientManagementRoutes';
 import { authRouter } from './api/AuthRoutes';
 import { AuthService } from '../application/services/AuthService';
+import { User, UserRole, UserStatus } from '../domain/entities/User';
 import {
   InMemoryUserRepository,
   InMemoryDoctorRepository,
@@ -421,9 +422,80 @@ class ExpressServer {
   }
 
   /**
+   * Seed test users for development and testing
+   * HUMAN REVIEW: This creates default users with hashed passwords for Postman/Newman tests
+   */
+  private async seedTestUsers(): Promise<void> {
+    const jwtSecret = process.env.JWT_SECRET || 'healthtech-dev-secret-key-2026';
+    const authService = new AuthService(this.userRepository, jwtSecret);
+
+    try {
+      // Check if admin already exists
+      const existingAdmin = await this.userRepository.findByEmail('admin@healthtech.com');
+      if (existingAdmin) {
+        console.log('⏭️  Test users already seeded - skipping');
+        return;
+      }
+
+      // HUMAN REVIEW: Crear usuarios de prueba con contraseñas hasheadas
+      const testUsers = [
+        {
+          email: 'admin@healthtech.com',
+          name: 'Admin Principal',
+          role: 'admin' as const,
+          password: 'admin123'
+        },
+        {
+          email: 'doctor@healthtech.com',
+          name: 'Dr. Juan García',
+          role: 'doctor' as const,
+          password: 'doctor123'
+        },
+        {
+          email: 'enfermera@healthtech.com',
+          name: 'Enfermera María López',
+          role: 'nurse' as const,
+          password: 'nurse123'
+        }
+      ];
+
+      for (const userData of testUsers) {
+        // Hash password
+        const passwordHash = await authService.hashPassword(userData.password);
+
+        // Create user entity
+        const user = User.create({
+          email: userData.email,
+          name: userData.name,
+          role: userData.role === 'admin' ? UserRole.ADMIN : 
+                userData.role === 'doctor' ? UserRole.DOCTOR : UserRole.NURSE,
+          status: UserStatus.ACTIVE
+        });
+
+        // Save user
+        await this.userRepository.save(user);
+
+        // Save password hash
+        if ('savePasswordHash' in this.userRepository && 
+            typeof this.userRepository.savePasswordHash === 'function') {
+          await this.userRepository.savePasswordHash(user.id, passwordHash);
+        }
+
+        console.log(`✅ Test user created: ${userData.email} (password: ${userData.password})`);
+      }
+
+      console.log('✅ Test users seeded successfully');
+    } catch (error) {
+      console.error('❌ Error seeding test users:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Inicia el servidor
    *
    * HUMAN REVIEW: Inicialización secuencial de dependencias externas:
+   * 0. Seed test users (development/testing only)
    * 1. RabbitMQ (opcional - no falla si no está disponible)
    * 2. Observer Pattern (registrar DoctorNotificationObserver en EventBus)
    * 3. Database (PostgreSQL connection pool)
@@ -432,6 +504,10 @@ class ExpressServer {
    */
   public async start(): Promise<void> {
     try {
+      // 0. Seed test users (development/testing only)
+      // HUMAN REVIEW: Eliminar en producción o usar variables de entorno
+      await this.seedTestUsers();
+
       // 1. Inicializar RabbitMQ (opcional - sistema degradado si falla)
       try {
         this.rabbitMQ = new RabbitMQConnection({
