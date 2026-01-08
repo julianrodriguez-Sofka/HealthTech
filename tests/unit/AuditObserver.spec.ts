@@ -9,12 +9,15 @@ import { AuditObserver } from '../../src/application/observers/AuditObserver';
 import { TriageEvent } from '../../src/domain/observers/TriageEvents';
 import { PatientPriority, PatientStatus } from '../../src/domain/entities/Patient';
 import { Logger } from '../../src/shared/Logger';
+import { IAuditRepository } from '../../src/domain/repositories/IAuditRepository';
+import { Result } from '../../src/shared/Result';
 
 jest.mock('../../src/shared/Logger');
 
 describe('AuditObserver', () => {
   let observer: AuditObserver;
   let mockLogger: jest.Mocked<Logger>;
+  let mockAuditRepository: jest.Mocked<IAuditRepository>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -26,121 +29,135 @@ describe('AuditObserver', () => {
       debug: jest.fn(),
     } as any;
 
+    mockAuditRepository = {
+      save: jest.fn().mockResolvedValue(Result.ok({ id: 'audit-123' })),
+      findByPatientId: jest.fn(),
+      findByUserId: jest.fn(),
+      findByDateRange: jest.fn(),
+    } as any;
+
     (Logger.getInstance as jest.Mock).mockReturnValue(mockLogger);
-    observer = new AuditObserver();
+    observer = new AuditObserver(mockAuditRepository);
   });
 
   describe('update()', () => {
     it('debe registrar evento PATIENT_REGISTERED en audit log', async () => {
       const event: TriageEvent = {
-        type: 'PATIENT_REGISTERED',
+        eventType: 'PATIENT_REGISTERED',
+        eventId: 'event-123',
+        occurredAt: new Date(),
         patientId: 'patient-123',
+        patientName: 'Test Patient',
         priority: PatientPriority.P2,
-        timestamp: new Date(),
-        metadata: {
-          symptoms: ['Fever', 'Cough'],
-          vitals: {
-            heartRate: 90,
-            bloodPressure: '120/80',
-            temperature: 38.5,
-            oxygenSaturation: 96,
-            respiratoryRate: 18,
-          },
-        },
-      };
+        symptoms: ['Fever', 'Cough'],
+        registeredBy: 'nurse-001',
+      } as any;
 
       await observer.update(event);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('AUDIT LOG'),
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventType: 'PATIENT_REGISTERED',
+          action: 'PATIENT_REGISTERED',
           patientId: 'patient-123',
-          priority: PatientPriority.P2,
-          timestamp: expect.any(Date),
         })
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Audit log saved')
       );
     });
 
     it('debe registrar evento PRIORITY_CHANGED con oldPriority', async () => {
       const event: TriageEvent = {
-        type: 'PRIORITY_CHANGED',
+        eventType: 'PATIENT_PRIORITY_CHANGED',
+        eventId: 'event-456',
+        occurredAt: new Date(),
         patientId: 'patient-456',
-        priority: PatientPriority.P1,
+        patientName: 'Test Patient 2',
         oldPriority: PatientPriority.P3,
-        timestamp: new Date(),
-        metadata: { reason: 'Deterioro clínico' },
-      };
+        newPriority: PatientPriority.P1,
+        reason: 'Deterioro clínico',
+        changedBy: 'doctor-001',
+      } as any;
 
       await observer.update(event);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('AUDIT LOG'),
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventType: 'PRIORITY_CHANGED',
-          oldPriority: PatientPriority.P3,
-          newPriority: PatientPriority.P1,
+          action: 'PATIENT_PRIORITY_CHANGED',
+          patientId: 'patient-456',
         })
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Audit log saved')
       );
     });
 
     it('debe registrar evento STATUS_CHANGED', async () => {
       const event: TriageEvent = {
-        type: 'STATUS_CHANGED',
+        eventType: 'CASE_ASSIGNED',
+        eventId: 'event-789',
+        occurredAt: new Date(),
         patientId: 'patient-789',
-        priority: PatientPriority.P2,
-        oldStatus: PatientStatus.WAITING,
-        newStatus: PatientStatus.IN_PROGRESS,
-        timestamp: new Date(),
-        metadata: { doctorId: 'doctor-001' },
-      };
+        patientName: 'Test Patient 3',
+        assignedDoctorId: 'doctor-001',
+        assignedDoctorName: 'Dr. Smith',
+        previousStatus: PatientStatus.WAITING,
+      } as any;
 
       await observer.update(event);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('AUDIT LOG'),
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventType: 'STATUS_CHANGED',
-          oldStatus: PatientStatus.WAITING,
-          newStatus: PatientStatus.IN_PROGRESS,
+          patientId: 'patient-789',
         })
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Audit log saved')
       );
     });
 
     it('debe registrar eventos sin metadata', async () => {
       const event: TriageEvent = {
-        type: 'PATIENT_REGISTERED',
+        eventType: 'PATIENT_REGISTERED',
+        eventId: 'event-000',
+        occurredAt: new Date(),
         patientId: 'patient-000',
+        patientName: 'Test Patient Zero',
         priority: PatientPriority.P5,
-        timestamp: new Date(),
-      };
+        symptoms: [],
+        registeredBy: 'system',
+      } as any;
 
       await observer.update(event);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.stringContaining('AUDIT LOG'),
-        expect.any(Object)
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patientId: 'patient-000',
+        })
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Audit log saved')
       );
     });
 
     it('debe manejar errores durante auditoría sin propagar', async () => {
-      mockLogger.info.mockImplementation(() => {
-        throw new Error('Audit system down');
-      });
+      mockAuditRepository.save.mockRejectedValue(new Error('Audit system down'));
 
       const event: TriageEvent = {
-        type: 'PATIENT_REGISTERED',
+        eventType: 'PATIENT_REGISTERED',
+        eventId: 'event-error',
+        occurredAt: new Date(),
         patientId: 'patient-error',
+        patientName: 'Error Patient',
         priority: PatientPriority.P3,
-        timestamp: new Date(),
-        metadata: {},
-      };
+        symptoms: [],
+        registeredBy: 'system',
+      } as any;
 
       await expect(observer.update(event)).resolves.not.toThrow();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error in AuditObserver'),
-        expect.any(Object)
+        expect.stringContaining('Audit observer error')
       );
     });
 
@@ -159,24 +176,26 @@ describe('AuditObserver', () => {
       };
 
       const event: TriageEvent = {
-        type: 'PRIORITY_CHANGED',
+        eventType: 'PATIENT_PRIORITY_CHANGED',
+        eventId: 'event-metadata',
+        occurredAt: new Date(),
         patientId: 'patient-metadata',
-        priority: PatientPriority.P2,
+        patientName: 'Metadata Patient',
         oldPriority: PatientPriority.P4,
-        timestamp: new Date(),
-        metadata,
-      };
+        newPriority: PatientPriority.P2,
+        reason: 'manual_override',
+        changedBy: 'user-123',
+      } as any;
 
       await observer.update(event);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.any(String),
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata: expect.objectContaining({
-            userId: 'user-123',
-            action: 'manual_override',
-          }),
+          patientId: 'patient-metadata',
         })
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Audit log saved')
       );
     });
   });
@@ -185,50 +204,50 @@ describe('AuditObserver', () => {
     it('debe registrar timestamp exacto del evento', async () => {
       const timestamp = new Date('2026-01-07T10:00:00Z');
       const event: TriageEvent = {
-        type: 'PATIENT_REGISTERED',
+        eventType: 'PATIENT_REGISTERED',
+        eventId: 'event-time',
+        occurredAt: timestamp,
         patientId: 'patient-time',
+        patientName: 'Time Patient',
         priority: PatientPriority.P3,
-        timestamp,
-        metadata: {},
-      };
+        symptoms: [],
+        registeredBy: 'system',
+      } as any;
 
       await observer.update(event);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.any(String),
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           timestamp,
+          patientId: 'patient-time',
         })
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Audit log saved')
       );
     });
 
     it('debe registrar todos los campos del evento', async () => {
       const event: TriageEvent = {
-        type: 'STATUS_CHANGED',
+        eventType: 'CASE_ASSIGNED',
+        eventId: 'event-complete',
+        occurredAt: new Date(),
         patientId: 'patient-complete',
-        priority: PatientPriority.P1,
-        oldStatus: PatientStatus.UNDER_TREATMENT,
-        newStatus: PatientStatus.STABILIZED,
-        timestamp: new Date(),
-        metadata: {
-          doctorId: 'doctor-789',
-          nurseId: 'nurse-456',
-          notes: 'Patient stabilized',
-        },
-      };
+        patientName: 'Complete Patient',
+        assignedDoctorId: 'doctor-789',
+        assignedDoctorName: 'Dr. Complete',
+        previousStatus: PatientStatus.WAITING,
+      } as any;
 
       await observer.update(event);
 
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        expect.any(String),
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventType: 'STATUS_CHANGED',
           patientId: 'patient-complete',
-          priority: PatientPriority.P1,
-          oldStatus: PatientStatus.UNDER_TREATMENT,
-          newStatus: PatientStatus.STABILIZED,
-          metadata: expect.any(Object),
         })
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Audit log saved')
       );
     });
   });

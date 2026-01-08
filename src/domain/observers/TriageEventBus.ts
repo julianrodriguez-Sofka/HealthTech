@@ -90,9 +90,18 @@ export class TriageEventBus implements IObservable<TriageEvent> {
       } catch (error) {
         // HUMAN REVIEW: NO fallar la notificación completa si un observer falla
         // Registrar el error y continuar con los demás observers
-        this.logger.error(`Observer notification failed - Observer: ${observer.constructor.name}, Event: ${event.eventType}, Error: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.error('Error notifying observer', {
+          observer: observer.constructor.name,
+          eventType: event.eventType,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
+
+    this.logger.info('All observers notified', {
+      eventType: event.eventType,
+      observerCount: this.observers.length
+    });
   }
 
   /**

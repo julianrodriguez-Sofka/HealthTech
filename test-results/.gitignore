@@ -1,0 +1,4 @@
+# Ignorar reportes de Newman para no subir al repo
+*.html
+*.json
+*.xml
