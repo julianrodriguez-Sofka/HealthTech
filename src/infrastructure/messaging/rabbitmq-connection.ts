@@ -10,6 +10,8 @@
  */
 
 import amqp, { Channel, Connection } from 'amqplib';
+import { Result } from '@shared/Result';
+import { MessagingServiceUnavailableError } from '@domain/errors';
 
 export interface RabbitMQConfig {
   host: string;
@@ -152,7 +154,7 @@ export class RabbitMQConnection {
   }
 
   /**
-   * Publica un mensaje en una cola
+   * Publica un mensaje en una cola (versión síncrona - legacy)
    *
    * @param queueName - Nombre de la cola
    * @param message - Mensaje a enviar (será serializado a JSON)
@@ -182,6 +184,58 @@ export class RabbitMQConnection {
     } catch (error) {
       console.error(`Failed to send message to queue '${queueName}':`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Publica un mensaje en una cola (versión asíncrona con Result pattern)
+   * Declara la cola automáticamente si no existe
+   *
+   * @param queueName - Nombre de la cola
+   * @param message - Mensaje a enviar (string JSON)
+   * @returns Result indicando éxito o error
+   *
+   * HUMAN REVIEW: Esta versión es más segura y sigue el Result pattern
+   */
+  public async sendToQueueAsync(
+    queueName: string,
+    message: string
+  ): Promise<Result<void, MessagingServiceUnavailableError>> {
+    if (!this.channel) {
+      return Result.fail(
+        new MessagingServiceUnavailableError('RabbitMQ channel not initialized. Call connect() first.')
+      );
+    }
+
+    try {
+      // HUMAN REVIEW: Declarar cola antes de publicar (idempotente)
+      await this.channel.assertQueue(queueName, {
+        durable: true,      // La cola sobrevive a reinicios del broker
+        exclusive: false,   // Permite múltiples consumidores
+        autoDelete: false,  // No se elimina automáticamente
+      });
+
+      const messageBuffer = Buffer.from(message);
+
+      const sent = this.channel.sendToQueue(queueName, messageBuffer, {
+        persistent: true,    // Mensaje sobrevive a reinicio de RabbitMQ
+        contentType: 'application/json',
+        timestamp: Date.now(),
+      });
+
+      if (!sent) {
+        console.warn(`[RabbitMQ] Message buffer full for queue '${queueName}'. Message will be buffered.`);
+      }
+
+      console.log(`[RabbitMQ] ✅ Message published to queue '${queueName}'`);
+      return Result.ok(undefined);
+    } catch (error) {
+      console.error(`[RabbitMQ] ❌ Failed to send message to queue '${queueName}':`, error);
+      return Result.fail(
+        new MessagingServiceUnavailableError(
+          `Failed to publish message: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
     }
   }
 

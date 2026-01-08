@@ -3,12 +3,16 @@
 # ====================================================================
 # Este archivo orquesta los servicios necesarios para el sistema
 # de triaje en tiempo real:
+# - Frontend: React + Vite + Tailwind (Nginx)
 # - App: Aplicación Node.js con WebSockets
 # - RabbitMQ: Broker de mensajería para notificaciones asíncronas
 # - PostgreSQL: Base de datos relacional para persistencia
+#
+# HUMAN REVIEW: La IA sugirió una configuración básica. Refactoricé para
+# incluir Healthchecks y redes aisladas para garantizar que la aplicación
+# no intente conectarse a RabbitMQ antes de que el broker acepte conexiones,
+# evitando fallos en el arranque.
 # ====================================================================
-
-version: '3.8'
 
 services:
   # ==================================================================
@@ -63,8 +67,6 @@ services:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin2026
       RABBITMQ_DEFAULT_VHOST: /
-      # Configuración de memoria y disco
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 512MB
     ports:
       - "5672:5672"    # Puerto AMQP
       - "15672:15672"  # Management UI
@@ -120,6 +122,9 @@ services:
       WEBSOCKET_PORT: 3001
       CORS_ORIGIN: "*"
       
+      # JWT Authentication
+      JWT_SECRET: healthtech-dev-secret-key-2026
+      
       # Logging
       LOG_LEVEL: info
     ports:
@@ -135,11 +140,45 @@ services:
       # - ./src:/app/src
       - app_logs:/app/logs
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health')"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - healthtech-network
+
+  # ==================================================================
+  # SERVICIO 4: Frontend (React + Vite Dev Server)
+  # ==================================================================
+  # Aplicación frontend con:
+  # - React 18 para UI interactiva
+  # - Tailwind CSS para diseño moderno
+  # - WebSocket client para actualizaciones en tiempo real
+  # - Vite dev server para desarrollo rápido
+  # ==================================================================
+  frontend:
+    build:
+      context: ./frontend-new
+      dockerfile: Dockerfile
+    container_name: healthtech-frontend
+    restart: unless-stopped
+    ports:
+      - "3003:3003"  # Vite dev server
+    environment:
+      - VITE_API_URL=http://localhost:3000/api/v1
+      - VITE_BACKEND_URL=http://app:3000
+    depends_on:
+      - app
+    volumes:
+      - ./frontend-new/src:/app/src
+      - ./frontend-new/public:/app/public
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
     networks:
       - healthtech-network
 
@@ -172,15 +211,25 @@ networks:
 #
 # Ver logs de la aplicación:
 #   docker-compose logs -f app
+#   docker-compose logs -f frontend
 #
 # Reiniciar solo la app (después de cambios):
 #   docker-compose restart app
+#
+# Rebuild del frontend:
+#   docker-compose build frontend --no-cache
+#   docker-compose up -d frontend
 #
 # Acceder a la base de datos:
 #   docker-compose exec postgres psql -U healthtech -d healthtech_triage
 #
 # Acceder a RabbitMQ Management:
 #   http://localhost:15672 (admin / admin2026)
+#
+# Acceder a la aplicación:
+#   Frontend: http://localhost
+#   API Backend: http://localhost:3000
+#   WebSocket: ws://localhost:3000
 #
 # Detener y eliminar contenedores:
 #   docker-compose down

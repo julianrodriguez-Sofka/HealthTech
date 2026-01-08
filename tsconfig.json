@@ -10,9 +10,18 @@
     "rootDir": "./src",                          // Directorio raíz del código fuente
     "baseUrl": "./src",                          // Base para mapeo de paths
     "paths": {
-      "@domain/*": ["domain/*"],                 // Alias para capa de dominio
-      "@application/*": ["application/*"],       // Alias para capa de aplicación
-      "@infrastructure/*": ["infrastructure/*"]  // Alias para capa de infraestructura
+      // Legacy paths (mantener para compatibilidad)
+      "@domain/*": ["domain/*"],
+      "@application/*": ["application/*"],
+      "@infrastructure/*": ["infrastructure/*"],
+      "@shared/*": ["shared/*"],
+      
+      // Microservices paths
+      "@auth-service/*": ["services/auth-service/*"],
+      "@triage-service/*": ["services/triage-service/*"],
+      "@patient-service/*": ["services/patient-service/*"],
+      "@notification-service/*": ["services/notification-service/*"],
+      "@audit-service/*": ["services/audit-service/*"]
     },
     "resolveJsonModule": true,                   // Permite importar archivos JSON
     

@@ -1,0 +1,39 @@
+# Docker Compose Override for Development
+# Este archivo extiende docker-compose.yml con configuraciones específicas
+# para desarrollo local (hot reload, debugging, etc.)
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder  # Usar stage de build para desarrollo
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+    volumes:
+      # Hot reload: montar código fuente
+      - ./src:/app/src
+      - ./tests:/app/tests
+      # Preservar node_modules del container
+      - /app/node_modules
+    command: npm run dev  # Usar ts-node-dev para hot reload
+    ports:
+      - "9229:9229"  # Puerto de debugging
+
+  frontend:
+    build:
+      context: ./frontend-new
+      dockerfile: Dockerfile
+    volumes:
+      # Hot reload para frontend
+      - ./frontend-new/src:/app/src
+      - ./frontend-new/public:/app/public
+      - /app/node_modules
+    command: npm run dev
+    ports:
+      - "3003:3003"  # Vite dev server
+    environment:
+      - VITE_API_URL=http://localhost:3000
