@@ -279,7 +279,7 @@ export class PatientManagementRoutes {
         return;
       }
 
-      if (!priority) {
+      if (priority === undefined || priority === null) {
         res.status(400).json({
           success: false,
           error: 'priority es requerido'
@@ -353,7 +353,17 @@ export class PatientManagementRoutes {
       const result = await useCase.execute({ doctorId });
 
       if (!result.success) {
-        res.status(400).json({
+        // Si es un error de infraestructura (DB, timeout, etc), retornar 500
+        const isInfrastructureError = result.error && (
+          result.error.includes('DB error') ||
+          result.error.includes('timeout') ||
+          result.error.includes('connection') ||
+          result.error.includes('network')
+        );
+        
+        const statusCode = isInfrastructureError ? 500 : 400;
+        
+        res.status(statusCode).json({
           success: false,
           error: result.error
         });
@@ -391,7 +401,7 @@ export class PatientManagementRoutes {
       }
 
       // Verificar que el paciente existe
-      const patient = await this.patientRepository.findById(id);
+      const patient = await this.patientRepository.findEntityById(id);
 
       if (!patient) {
         res.status(404).json({

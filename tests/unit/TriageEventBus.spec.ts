@@ -11,7 +11,7 @@ import { TriageEvent } from '../../src/domain/observers/TriageEvents';
 import { PatientPriority } from '../../src/domain/entities/Patient';
 import { Logger } from '../../src/shared/Logger';
 
-jest.mock('@shared/Logger');
+jest.mock('../../src/shared/Logger');
 
 describe('TriageEventBus', () => {
   let eventBus: TriageEventBus;

@@ -10,7 +10,7 @@ import { TriageEvent } from '../../src/domain/observers/TriageEvents';
 import { PatientPriority, PatientStatus } from '../../src/domain/entities/Patient';
 import { Logger } from '../../src/shared/Logger';
 
-jest.mock('@shared/Logger');
+jest.mock('../../src/shared/Logger');
 
 describe('AuditObserver', () => {
   let observer: AuditObserver;
