@@ -1,6 +1,6 @@
 /**
  * Domain Entities - Public API
- * 
+ *
  * Export all domain entities for clean imports across layers
  */
 

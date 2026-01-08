@@ -112,7 +112,7 @@ export class RegisterPatientUseCase {
       // STEP 3: Crear registro de paciente
       const patientId = this.generatePatientId();
       const birthDate = this.calculateBirthDate(input.age);
-      
+
       const patientData: PatientData = {
         id: patientId,
         firstName: input.firstName,

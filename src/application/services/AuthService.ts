@@ -1,9 +1,9 @@
 /**
  * AuthService - Application Service
- * 
+ *
  * Servicio de autenticación con JWT para el sistema de triaje.
  * Maneja login, token validation, y refresh tokens.
- * 
+ *
  * HUMAN REVIEW: Configurar JWT_SECRET en variables de entorno productivas
  * HUMAN REVIEW: Ajustar tiempos de expiración según política de seguridad
  */
@@ -11,7 +11,10 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
-import { UserRole } from '../../domain/entities/User';
+import { User, UserRole } from '../../domain/entities/User';
+
+// Type for User with password hash (used during authentication)
+type UserWithPasswordHash = User & { passwordHash?: string };
 
 /**
  * DTO for login request
@@ -75,7 +78,7 @@ interface JWTPayload {
 
 /**
  * AuthService - Authentication & Authorization
- * 
+ *
  * SOLID Principles:
  * - SRP: Solo maneja autenticación
  * - DIP: Depende de abstracciones (IUserRepository)
@@ -135,7 +138,8 @@ export class AuthService {
       }
 
       // Verify password
-      const passwordHash = (user as any).passwordHash;
+      const userWithHash = user as UserWithPasswordHash;
+      const passwordHash = userWithHash.passwordHash;
       if (!passwordHash) {
         return {
           success: false,

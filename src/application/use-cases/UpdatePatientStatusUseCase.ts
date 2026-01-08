@@ -1,6 +1,6 @@
 /**
  * UpdatePatientStatusUseCase - Application Use Case
- * 
+ *
  * Caso de uso para actualizar el estado de un paciente.
  * Mantiene trazabilidad de cambios de estado.
  */
@@ -16,14 +16,14 @@ export interface UpdatePatientStatusDTO {
 
 export interface UpdatePatientStatusResult {
   success: boolean;
-  patient?: any;
+  patient?: Patient;
   message?: string;
   error?: string;
 }
 
 /**
  * UpdatePatientStatusUseCase
- * 
+ *
  * SOLID Principles:
  * - SRP: Solo maneja actualización de estado
  * - DIP: Depende de abstracciones

@@ -1,9 +1,9 @@
 /**
  * Doctor Entity - Domain Model
- * 
+ *
  * Extiende User con información específica de médicos.
  * Mantiene especialización y disponibilidad.
- * 
+ *
  * HUMAN REVIEW: Considerar agregar turnos, horarios, máximo de pacientes
  */
 
@@ -32,7 +32,7 @@ export interface DoctorProps extends UserProps {
 
 /**
  * Doctor Entity
- * 
+ *
  * SOLID Principles:
  * - LSP: Puede sustituir a User sin romper funcionalidad
  * - ISP: No depende de métodos que no usa
@@ -79,7 +79,7 @@ export class Doctor extends User {
    */
   static fromPersistence(props: DoctorProps): Doctor {
     const { id, email, name, role, status, createdAt, updatedAt, ...doctorSpecific } = props;
-    
+
     const userProps: UserProps = {
       id,
       email,
@@ -138,12 +138,12 @@ export class Doctor extends User {
   /**
    * Business methods
    */
-  
+
   /**
    * Check if doctor can take more patients
    */
   canTakePatient(): boolean {
-    return this.doctorProps.isAvailable && 
+    return this.doctorProps.isAvailable &&
            this.props.status === UserStatus.ACTIVE &&
            this.doctorProps.currentPatientLoad < this.doctorProps.maxPatientLoad;
   }
@@ -157,7 +157,7 @@ export class Doctor extends User {
       throw new Error('Doctor cannot take more patients');
     }
     this.doctorProps.currentPatientLoad += 1;
-    (this.props as any).updatedAt = new Date();
+    this.props.updatedAt = new Date();
   }
 
   /**
@@ -168,7 +168,7 @@ export class Doctor extends User {
       throw new Error('Doctor has no patients to release');
     }
     this.doctorProps.currentPatientLoad -= 1;
-    (this.props as any).updatedAt = new Date();
+    this.props.updatedAt = new Date();
   }
 
   /**
@@ -176,7 +176,7 @@ export class Doctor extends User {
    */
   toggleAvailability(): void {
     this.doctorProps.isAvailable = !this.doctorProps.isAvailable;
-    (this.props as any).updatedAt = new Date();
+    this.props.updatedAt = new Date();
   }
 
   /**
@@ -187,7 +187,7 @@ export class Doctor extends User {
       throw new Error(`Invalid specialty: ${specialty}`);
     }
     this.doctorProps.specialty = specialty;
-    (this.props as any).updatedAt = new Date();
+    this.props.updatedAt = new Date();
   }
 
   /**

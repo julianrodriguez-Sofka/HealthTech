@@ -1,9 +1,9 @@
 /**
  * CreateUserUseCase - Application Use Case
- * 
+ *
  * Caso de uso para registrar un nuevo usuario en el sistema.
  * Sigue Clean Architecture y principios SOLID.
- * 
+ *
  * HUMAN REVIEW: Agregar hash de password antes de persistir
  */
 
@@ -36,7 +36,7 @@ export interface CreateUserResult {
 
 /**
  * CreateUserUseCase
- * 
+ *
  * SOLID Principles:
  * - SRP: Solo maneja creación de usuarios
  * - DIP: Depende de abstracciones (interfaces de repositorios)
@@ -68,20 +68,20 @@ export class CreateUserUseCase {
 
       // Create user based on role
       let user: User;
-      
+
       switch (dto.role) {
         case UserRole.DOCTOR:
           user = await this.createDoctor(dto);
           break;
-        
+
         case UserRole.NURSE:
           user = await this.createNurse(dto);
           break;
-        
+
         case UserRole.ADMIN:
           user = this.createAdmin(dto);
           break;
-        
+
         default:
           return {
             success: false,
@@ -93,8 +93,8 @@ export class CreateUserUseCase {
       await this.userRepository.save(user);
 
       // Save password hash
-      if ('savePasswordHash' in this.userRepository) {
-        await (this.userRepository as any).savePasswordHash(user.id, passwordHash);
+      if ('savePasswordHash' in this.userRepository && typeof this.userRepository.savePasswordHash === 'function') {
+        await this.userRepository.savePasswordHash(user.id, passwordHash);
       }
 
       return {

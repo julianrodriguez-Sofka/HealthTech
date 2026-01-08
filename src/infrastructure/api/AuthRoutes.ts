@@ -1,9 +1,9 @@
 /**
  * Auth Routes
- * 
+ *
  * Endpoints REST para autenticación y gestión de tokens JWT.
  * Provee login con credenciales y refresh de tokens.
- * 
+ *
  * HUMAN REVIEW: Implementar rate limiting para prevenir brute force attacks
  */
 
@@ -12,7 +12,7 @@ import { AuthService } from '../../application/services/AuthService';
 
 /**
  * Creates Express router with authentication endpoints
- * 
+ *
  * @param authService - Service for handling authentication operations
  * @returns Express Router with auth routes
  */
@@ -21,13 +21,13 @@ export function authRouter(authService: AuthService): Router {
 
   /**
    * POST /api/v1/auth/login
-   * 
+   *
    * Authenticate user with email and password.
    * Returns JWT access token and refresh token.
-   * 
+   *
    * HUMAN REVIEW: Add rate limiting (e.g., 5 attempts per 15 minutes)
    * HUMAN REVIEW: Consider implementing CAPTCHA after multiple failed attempts
-   * 
+   *
    * @body {string} email - User email (case-insensitive)
    * @body {string} password - User password
    * @returns {200} Successful authentication with tokens
@@ -99,12 +99,12 @@ export function authRouter(authService: AuthService): Router {
 
   /**
    * POST /api/v1/auth/refresh
-   * 
+   *
    * Refresh access token using valid refresh token.
    * Returns new access token and refresh token pair.
-   * 
+   *
    * HUMAN REVIEW: Implement refresh token rotation and blacklisting
-   * 
+   *
    * @body {string} refreshToken - Valid refresh token
    * @returns {200} New tokens issued successfully
    * @returns {400} Invalid request data

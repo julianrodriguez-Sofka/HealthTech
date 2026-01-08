@@ -72,14 +72,14 @@ export class Result<T, E = Error> {
    */
   public static combine<T>(results: Result<T, Error>[]): Result<T[], Error> {
     const values: T[] = [];
-    
+
     for (const result of results) {
       if (result.isFailure) {
         return Result.fail(result.error);
       }
       values.push(result.value);
     }
-    
+
     return Result.ok(values);
   }
 

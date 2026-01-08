@@ -1,6 +1,6 @@
 /**
  * Application Use Cases - Public API
- * 
+ *
  * Export all use cases for dependency injection
  */
 

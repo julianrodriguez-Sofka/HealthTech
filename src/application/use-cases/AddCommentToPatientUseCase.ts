@@ -1,6 +1,6 @@
 /**
  * AddCommentToPatientUseCase - Application Use Case
- * 
+ *
  * Caso de uso para agregar comentarios/notas médicas a un paciente.
  * Mantiene auditoría de observaciones y cambios.
  */
@@ -20,14 +20,14 @@ export interface AddCommentDTO {
 export interface AddCommentResult {
   success: boolean;
   commentId?: string;
-  comment?: any;
+  comment?: PatientComment;
   message?: string;
   error?: string;
 }
 
 /**
  * AddCommentToPatientUseCase
- * 
+ *
  * SOLID Principles:
  * - SRP: Solo maneja creación de comentarios
  * - DIP: Depende de abstracciones

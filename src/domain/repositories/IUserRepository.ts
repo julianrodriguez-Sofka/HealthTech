@@ -1,9 +1,9 @@
 /**
  * IUserRepository - Domain Repository Interface
- * 
+ *
  * Define el contrato para persistencia de usuarios.
  * Implementación en infrastructure/ layer.
- * 
+ *
  * SOLID Principles:
  * - DIP: Domain no depende de infrastructure
  * - ISP: Interface pequeña y específica
@@ -13,7 +13,7 @@ import { User, UserRole, UserStatus } from '../entities/User';
 
 /**
  * Repository interface for User entity
- * 
+ *
  * HUMAN REVIEW: Consider adding pagination for large user lists
  */
 export interface IUserRepository {

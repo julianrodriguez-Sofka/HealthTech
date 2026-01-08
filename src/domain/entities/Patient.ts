@@ -1,9 +1,9 @@
 /**
  * Patient Entity - Domain Model
- * 
+ *
  * Representa un paciente en el sistema de triaje.
  * Mantiene información vital, síntomas, prioridad y asignación.
- * 
+ *
  * HUMAN REVIEW: Validar rangos de signos vitales según estándares médicos
  */
 
@@ -59,7 +59,7 @@ export interface PatientProps {
 
 /**
  * Patient Entity
- * 
+ *
  * SOLID Principles:
  * - SRP: Gestiona solo datos y reglas del paciente
  * - OCP: Extensible mediante agregación de comentarios
@@ -216,7 +216,7 @@ export class Patient {
   /**
    * Business methods
    */
-  
+
   /**
    * Check if patient is critical (P1 or P2)
    */
@@ -240,20 +240,20 @@ export class Patient {
       throw new Error('Patient is already assigned to a doctor');
     }
 
-    (this.props as any).assignedDoctorId = doctorId;
-    (this.props as any).assignedDoctorName = doctorName;
-    (this.props as any).status = PatientStatus.IN_PROGRESS;
-    (this.props as any).treatmentStartTime = new Date();
-    (this.props as any).updatedAt = new Date();
+    this.props.assignedDoctorId = doctorId;
+    this.props.assignedDoctorName = doctorName;
+    this.props.status = PatientStatus.IN_PROGRESS;
+    this.props.treatmentStartTime = new Date();
+    this.props.updatedAt = new Date();
   }
 
   /**
    * Reassign patient to different doctor
    */
   reassignDoctor(doctorId: string, doctorName: string): void {
-    (this.props as any).assignedDoctorId = doctorId;
-    (this.props as any).assignedDoctorName = doctorName;
-    (this.props as any).updatedAt = new Date();
+    this.props.assignedDoctorId = doctorId;
+    this.props.assignedDoctorName = doctorName;
+    this.props.updatedAt = new Date();
   }
 
   /**
@@ -264,12 +264,12 @@ export class Patient {
       throw new Error(`Invalid status: ${newStatus}`);
     }
 
-    (this.props as any).status = newStatus;
-    (this.props as any).updatedAt = new Date();
+    this.props.status = newStatus;
+    this.props.updatedAt = new Date();
 
     // Set discharge time when discharged
     if (newStatus === PatientStatus.DISCHARGED && !this.props.dischargeTime) {
-      (this.props as any).dischargeTime = new Date();
+      this.props.dischargeTime = new Date();
     }
 
     // HUMAN REVIEW: Consider emitting StatusChangedEvent for audit
@@ -284,16 +284,16 @@ export class Patient {
       throw new Error(`Invalid priority: ${priority}`);
     }
 
-    (this.props as any).manualPriority = priority;
-    (this.props as any).updatedAt = new Date();
+    this.props.manualPriority = priority;
+    this.props.updatedAt = new Date();
   }
 
   /**
    * Clear manual priority (use automatic)
    */
   clearManualPriority(): void {
-    (this.props as any).manualPriority = undefined;
-    (this.props as any).updatedAt = new Date();
+    this.props.manualPriority = undefined;
+    this.props.updatedAt = new Date();
   }
 
   /**
@@ -304,8 +304,8 @@ export class Patient {
       throw new Error('Comment patient ID does not match');
     }
 
-    (this.props as any).comments.push(comment);
-    (this.props as any).updatedAt = new Date();
+    this.props.comments.push(comment);
+    this.props.updatedAt = new Date();
   }
 
   /**
@@ -321,12 +321,12 @@ export class Patient {
    * Update vital signs
    */
   updateVitals(newVitals: Partial<VitalSigns>): void {
-    (this.props as any).vitals = {
+    this.props.vitals = {
       ...this.props.vitals,
       ...newVitals,
     };
     this.validateVitalSigns();
-    (this.props as any).updatedAt = new Date();
+    this.props.updatedAt = new Date();
   }
 
   /**
@@ -338,3 +338,4 @@ export class Patient {
     };
   }
 }
+

@@ -1,6 +1,6 @@
 /**
  * InMemoryPatientCommentRepository - Infrastructure Implementation
- * 
+ *
  * Implementación en memoria del repositorio de comentarios.
  */
 
@@ -52,13 +52,13 @@ export class InMemoryPatientCommentRepository implements IPatientCommentReposito
   async findRecent(hours: number): Promise<PatientComment[]> {
     const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
     const result: PatientComment[] = [];
-    
+
     for (const comment of this.comments.values()) {
       if (comment.createdAt > cutoffTime) {
         result.push(comment);
       }
     }
-    
+
     return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 

@@ -1,6 +1,6 @@
 /**
  * InMemoryDoctorRepository - Infrastructure Implementation
- * 
+ *
  * Implementación en memoria del repositorio de médicos.
  * Para desarrollo y testing.
  */

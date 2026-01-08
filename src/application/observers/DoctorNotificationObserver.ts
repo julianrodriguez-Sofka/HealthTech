@@ -151,9 +151,15 @@ export class DoctorNotificationObserver implements IObserver<TriageEvent> {
    */
   private async handleCriticalVitals(event: CriticalVitalsDetectedEvent): Promise<void> {
     const vitalsInfo: string[] = [];
-    if (event.heartRate !== undefined) vitalsInfo.push(`FC: ${event.heartRate} bpm`);
-    if (event.oxygenSaturation !== undefined) vitalsInfo.push(`SpO2: ${event.oxygenSaturation}%`);
-    if (event.temperature !== undefined) vitalsInfo.push(`Temp: ${event.temperature}°C`);
+    if (event.heartRate !== undefined) {
+      vitalsInfo.push(`FC: ${event.heartRate} bpm`);
+    }
+    if (event.oxygenSaturation !== undefined) {
+      vitalsInfo.push(`SpO2: ${event.oxygenSaturation}%`);
+    }
+    if (event.temperature !== undefined) {
+      vitalsInfo.push(`Temp: ${event.temperature}°C`);
+    }
 
     const message = {
       eventType: 'CRITICAL_VITALS_DETECTED',

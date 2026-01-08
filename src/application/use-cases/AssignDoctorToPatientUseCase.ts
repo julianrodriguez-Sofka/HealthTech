@@ -1,15 +1,14 @@
 /**
  * AssignDoctorToPatientUseCase - Application Use Case
- * 
+ *
  * Caso de uso para asignar un médico a un paciente.
  * Valida disponibilidad y capacidad del médico.
- * 
+ *
  * HUMAN REVIEW: Considerar emitir eventos de dominio para notificaciones
  */
 
 import { IPatientRepository } from '../../domain/repositories/IPatientRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
-
 
 export interface AssignDoctorDTO {
   patientId: string;
@@ -20,13 +19,13 @@ export interface AssignDoctorResult {
   success: boolean;
   error?: string;
   message?: string;
-  patient?: any;
-  doctor?: any;
+  patient?: Patient;
+  doctor?: Doctor;
 }
 
 /**
  * AssignDoctorToPatientUseCase
- * 
+ *
  * SOLID Principles:
  * - SRP: Solo maneja asignación doctor-paciente
  * - DIP: Depende de abstracciones

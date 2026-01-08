@@ -151,7 +151,7 @@ export class PatientRoutes {
       const output = result.value;
 
       console.log(`[Patient Registered] ID: ${output.id}, Priority: P${output.priority}, Name: ${output.firstName} ${output.lastName}`);
-      console.log(`✅ Observer pattern executed - Doctors have been notified`);
+      console.log('✅ Observer pattern executed - Doctors have been notified');
 
       // Retornar paciente registrado en formato compatible con frontend
       res.status(201).json({
@@ -314,7 +314,7 @@ export class PatientRoutes {
   /**
    * Calcular prioridad automática basada en signos vitales
    * HUMAN REVIEW: Esta lógica debe ser validada por personal médico
-   * 
+   *
    * NOTE: This method is currently not used but kept for future reference.
    * The priority calculation is now handled by RegisterPatientUseCase.
    */

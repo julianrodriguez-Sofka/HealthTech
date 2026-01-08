@@ -1,9 +1,9 @@
 /**
  * User Entity - Domain Model
- * 
+ *
  * Representa un usuario del sistema HealthTech (Médico, Enfermero o Administrador).
  * Sigue principios de Domain-Driven Design con validación de negocio.
- * 
+ *
  * HUMAN REVIEW: Passwords deben ser hasheados antes de persistir (en infrastructure)
  */
 
@@ -31,7 +31,7 @@ export interface UserProps {
 
 /**
  * User Entity
- * 
+ *
  * SOLID Principles:
  * - SRP: Solo maneja datos y validaciones del usuario
  * - OCP: Extensible a través de herencia (Doctor, Nurse extienden User)
@@ -141,8 +141,8 @@ export class User {
     if (!Object.values(UserStatus).includes(newStatus)) {
       throw new Error(`Invalid status: ${newStatus}`);
     }
-    (this.props as any).status = newStatus;
-    (this.props as any).updatedAt = new Date();
+    this.props.status = newStatus;
+    this.props.updatedAt = new Date();
   }
 
   /**

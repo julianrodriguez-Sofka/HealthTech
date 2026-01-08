@@ -1,6 +1,6 @@
 /**
  * Nurse Entity - Domain Model
- * 
+ *
  * Extiende User con información específica de enfermeros.
  * Mantiene área de trabajo y turnos.
  */
@@ -25,7 +25,7 @@ export interface NurseProps extends UserProps {
 
 /**
  * Nurse Entity
- * 
+ *
  * SOLID Principles:
  * - LSP: Puede sustituir a User
  * - SRP: Solo maneja lógica de enfermeros
@@ -70,7 +70,7 @@ export class Nurse extends User {
    */
   static fromPersistence(props: NurseProps): Nurse {
     const { id, email, name, role, status, createdAt, updatedAt, ...nurseSpecific } = props;
-    
+
     const userProps: UserProps = {
       id,
       email,
@@ -118,7 +118,7 @@ export class Nurse extends User {
   /**
    * Business methods
    */
-  
+
   /**
    * Update nurse area
    */
@@ -127,7 +127,7 @@ export class Nurse extends User {
       throw new Error(`Invalid area: ${area}`);
     }
     this.nurseProps.area = area;
-    (this.props as any).updatedAt = new Date();
+    this.props.updatedAt = new Date();
   }
 
   /**
@@ -135,7 +135,7 @@ export class Nurse extends User {
    */
   updateShift(shift: 'morning' | 'afternoon' | 'night'): void {
     this.nurseProps.shift = shift;
-    (this.props as any).updatedAt = new Date();
+    this.props.updatedAt = new Date();
   }
 
   /**

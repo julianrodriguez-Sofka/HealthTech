@@ -1,9 +1,9 @@
 /**
  * InMemoryUserRepository - Infrastructure Implementation
- * 
+ *
  * Implementación en memoria del repositorio de usuarios.
  * Para desarrollo y testing. En producción usar PostgreSQL.
- * 
+ *
  * HUMAN REVIEW: Migrar a PostgreSQL para persistencia real
  */
 
@@ -12,7 +12,7 @@ import { User, UserRole, UserStatus } from '../../domain/entities/User';
 
 /**
  * In-memory implementation of IUserRepository
- * 
+ *
  * SOLID Principles:
  * - DIP: Implements domain interface
  * - SRP: Solo maneja persistencia de usuarios
@@ -30,7 +30,7 @@ export class InMemoryUserRepository implements IUserRepository {
     const user = this.users.get(id) || null;
     if (user) {
       // Attach passwordHash for authentication
-      (user as any).passwordHash = this.passwordHashes.get(user.id);
+      (user as User & { passwordHash?: string }).passwordHash = this.passwordHashes.get(user.id);
     }
     return user;
   }
@@ -39,7 +39,7 @@ export class InMemoryUserRepository implements IUserRepository {
     for (const user of this.users.values()) {
       if (user.email === email) {
         // Attach passwordHash for authentication
-        (user as any).passwordHash = this.passwordHashes.get(user.id);
+        (user as User & { passwordHash?: string }).passwordHash = this.passwordHashes.get(user.id);
         return user;
       }
     }

@@ -1,6 +1,6 @@
 /**
  * IDoctorRepository - Domain Repository Interface
- * 
+ *
  * Define el contrato para persistencia de médicos.
  * Extiende funcionalidad de usuarios con métodos específicos de doctores.
  */
@@ -9,7 +9,7 @@ import { Doctor, MedicalSpecialty } from '../entities/Doctor';
 
 /**
  * Repository interface for Doctor entity
- * 
+ *
  * HUMAN REVIEW: Consider adding complex queries like findNearestAvailable
  */
 export interface IDoctorRepository {

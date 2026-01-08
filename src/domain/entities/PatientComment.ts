@@ -1,9 +1,9 @@
 /**
  * PatientComment Entity - Domain Model
- * 
+ *
  * Representa un comentario/nota médica sobre un paciente.
  * Mantiene trazabilidad de cambios y observaciones.
- * 
+ *
  * HUMAN REVIEW: Considerar versionado de comentarios para auditoría
  */
 
@@ -31,7 +31,7 @@ export interface PatientCommentProps {
 
 /**
  * PatientComment Entity
- * 
+ *
  * SOLID Principles:
  * - SRP: Solo maneja comentarios y su metadata
  * - OCP: Extensible para diferentes tipos de comentarios
@@ -131,7 +131,7 @@ export class PatientComment {
   /**
    * Business methods
    */
-  
+
   /**
    * Edit comment content
    * HUMAN REVIEW: Consider keeping edit history for compliance

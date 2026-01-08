@@ -1,6 +1,6 @@
 /**
  * GetDoctorPatientsUseCase - Application Use Case
- * 
+ *
  * Caso de uso para obtener los pacientes asignados a un médico específico.
  */
 

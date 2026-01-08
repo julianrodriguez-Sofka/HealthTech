@@ -161,8 +161,12 @@ export class UserRoutes {
       const { role, status } = req.query;
 
       const filters: any = {};
-      if (role) filters.role = role as string;
-      if (status) filters.status = status as string;
+      if (role) {
+        filters.role = role as string;
+      }
+      if (status) {
+        filters.status = status as string;
+      }
 
       const users = await this.userRepository.findAll(filters);
 
@@ -337,7 +341,7 @@ export class UserRoutes {
       }
 
       // Cambiar estado
-      user.changeStatus(status as any);
+      user.changeStatus(status);
 
       // Persistir
       await this.userRepository.save(user);

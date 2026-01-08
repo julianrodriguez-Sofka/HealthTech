@@ -42,14 +42,14 @@ class ExpressServer {
   private port: number;
   private rabbitMQ: RabbitMQConnection | null = null;
   private wsServer: WebSocketServer | null = null;
-  
+
   // HUMAN REVIEW: Repository instances for dependency injection
   private userRepository: InMemoryUserRepository;
   private doctorRepository: InMemoryDoctorRepository;
   private patientCommentRepository: InMemoryPatientCommentRepository;
   private patientRepository: InMemoryPatientRepository;
   private vitalsRepository: InMemoryVitalsRepository;
-  
+
   // HUMAN REVIEW: Observer pattern implementation
   private eventBus: TriageEventBus;
   private doctorNotificationObserver: DoctorNotificationObserver | null = null;
@@ -59,14 +59,14 @@ class ExpressServer {
     this.httpServer = createServer(this.app);
     this.healthTechApp = new App();
     this.port = port;
-    
+
     // Initialize repositories
     this.userRepository = new InMemoryUserRepository();
     this.doctorRepository = new InMemoryDoctorRepository();
     this.patientCommentRepository = new InMemoryPatientCommentRepository();
     this.patientRepository = new InMemoryPatientRepository();
     this.vitalsRepository = new InMemoryVitalsRepository();
-    
+
     // Initialize Observer pattern components
     this.eventBus = new TriageEventBus();
 
@@ -106,7 +106,7 @@ class ExpressServer {
       const method = req.method;
       const path = req.path;
       const query = Object.keys(req.query).length > 0 ? JSON.stringify(req.query) : '';
-      
+
       console.log(`[${timestamp}] ${method} ${path}${query ? ' ' + query : ''}`);
       next();
     });
@@ -221,7 +221,7 @@ class ExpressServer {
       this.eventBus
     );
     const patientRouter = patientRoutes.getRouter();
-    
+
     // HUMAN REVIEW: Patient Management Routes (enhanced endpoints)
     const patientManagementRoutes = new PatientManagementRoutes(
       this.patientRepository,
@@ -230,7 +230,7 @@ class ExpressServer {
       this.userRepository
     );
     const managementRouter = patientManagementRoutes.getRouter();
-    
+
     // Merge both routers under /api/v1/patients
     // Basic CRUD routes come first, then management routes
     this.app.use('/api/v1/patients', patientRouter);
@@ -443,14 +443,14 @@ class ExpressServer {
         });
         await this.rabbitMQ.connect();
         console.log('✅ RabbitMQ connection initialized');
-        
+
         // 2. Inicializar Observer Pattern (si RabbitMQ está disponible)
         // HUMAN REVIEW: Este es el requisito obligatorio de HU.md - Observer notifica a médicos
         const messagingService = new MessagingService(this.rabbitMQ);
-        
+
         this.doctorNotificationObserver = new DoctorNotificationObserver(messagingService);
         this.eventBus.subscribe(this.doctorNotificationObserver);
-        
+
         console.log('✅ Observer pattern initialized - DoctorNotificationObserver subscribed to EventBus');
       } catch (error) {
         console.warn('⚠️ RabbitMQ not available. System will run in degraded mode:', error);
@@ -491,7 +491,7 @@ class ExpressServer {
         if (this.doctorNotificationObserver) {
           console.log(`🔔 Observer Pattern: ACTIVE (${this.eventBus.getObserverCount()} observers registered)`);
         } else {
-          console.log(`🔔 Observer Pattern: INACTIVE (RabbitMQ not available)`);
+          console.log('🔔 Observer Pattern: INACTIVE (RabbitMQ not available)');
         }
         console.log('================================\n');
       });

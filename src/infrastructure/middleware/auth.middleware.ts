@@ -1,9 +1,9 @@
 /**
  * Authentication Middleware
- * 
+ *
  * Middleware de autenticación JWT para proteger rutas del API.
  * Valida tokens JWT y autoriza acceso basado en roles de usuario.
- * 
+ *
  * HUMAN REVIEW: Verificar políticas de seguridad y gestión de tokens según requerimientos
  */
 
@@ -28,11 +28,11 @@ declare global {
 
 /**
  * Authentication middleware
- * 
+ *
  * Valida token JWT del header Authorization y adjunta información del usuario a req.user
- * 
+ *
  * HUMAN REVIEW: Considerar rate limiting y logging de intentos de autenticación
- * 
+ *
  * @param authService - Servicio de autenticación para validar tokens
  * @returns Express middleware function
  */
@@ -101,15 +101,15 @@ export const authMiddleware = (authService: AuthService) => {
 
 /**
  * Role-based authorization middleware
- * 
+ *
  * Verifica que el usuario autenticado tenga uno de los roles permitidos.
  * DEBE usarse DESPUÉS de authMiddleware para garantizar req.user existe.
- * 
+ *
  * HUMAN REVIEW: Verificar jerarquía de roles (ej: ADMIN puede hacer todo)
- * 
+ *
  * @param allowedRoles - Array de roles permitidos para acceder a la ruta
  * @returns Express middleware function
- * 
+ *
  * @example
  * // Solo doctores y administradores
  * router.get('/patients', authMiddleware(authService), requireRole([UserRole.DOCTOR, UserRole.ADMIN]), getPatients);
