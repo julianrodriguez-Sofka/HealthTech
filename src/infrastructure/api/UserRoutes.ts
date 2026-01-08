@@ -16,6 +16,7 @@ import { AuthService } from '../../application/services/AuthService';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { IDoctorRepository } from '../../domain/repositories/IDoctorRepository';
 import { UserRole, UserStatus } from '../../domain/entities/User';
+import { CreateUserBody, UpdateUserProfileBody } from './request-types';
 
 export class UserRoutes {
   private router: Router;
@@ -56,7 +57,7 @@ export class UserRoutes {
    * POST /api/v1/users
    * Registrar nuevo usuario (Admin, Doctor o Nurse)
    */
-  private async createUser(req: Request, res: Response): Promise<void> {
+  private async createUser(req: Request<Record<string, never>, Record<string, never>, CreateUserBody>, res: Response): Promise<void> {
     try {
       const {
         email,
@@ -91,7 +92,7 @@ export class UserRoutes {
       }
 
       // HUMAN REVIEW: Validate doctor-specific fields
-      if (role === 'doctor') {
+      if (role === UserRole.DOCTOR) {
         if (!specialty || !licenseNumber) {
           res.status(400).json({
             success: false,
@@ -102,7 +103,7 @@ export class UserRoutes {
       }
 
       // HUMAN REVIEW: Validate nurse-specific fields
-      if (role === 'nurse') {
+      if (role === UserRole.NURSE) {
         if (!area || !shift || !licenseNumber) {
           res.status(400).json({
             success: false,
@@ -160,7 +161,7 @@ export class UserRoutes {
     try {
       const { role, status } = req.query;
 
-      const filters: any = {};
+      const filters: { role?: string; status?: string } = {};
       if (role) {
         filters.role = role as string;
       }
@@ -227,7 +228,7 @@ export class UserRoutes {
    * PATCH /api/v1/users/:id
    * Actualizar datos de usuario (nombre, email, contraseña)
    */
-  private async updateUser(req: Request, res: Response): Promise<void> {
+  private async updateUser(req: Request<{ id: string }, Record<string, never>, UpdateUserProfileBody>, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { name, email, password } = req.body;
@@ -253,7 +254,7 @@ export class UserRoutes {
       // Actualizar campos si se proporcionan
       if (name && name !== user.name) {
         // HUMAN REVIEW: Validar formato de nombre
-        (user as any).name = name;
+        Object.assign(user, { name });
       }
 
       if (email && email !== user.email) {
@@ -266,13 +267,13 @@ export class UserRoutes {
           });
           return;
         }
-        (user as any).email = email;
+        Object.assign(user, { email });
       }
 
       if (password) {
         // HUMAN REVIEW: Aquí debería hashearse la contraseña
         // Por ahora se guarda tal cual (NO RECOMENDADO EN PRODUCCIÓN)
-        (user as any).password = password;
+        Object.assign(user, { password });
       }
 
       await this.userRepository.save(user);
@@ -300,7 +301,7 @@ export class UserRoutes {
    * PATCH /api/v1/users/:id/status
    * Actualizar estado del usuario (active, inactive, suspended)
    */
-  private async updateUserStatus(req: Request, res: Response): Promise<void> {
+  private async updateUserStatus(req: Request<{ id: string }, Record<string, never>, { status: UserStatus }>, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { status } = req.body;

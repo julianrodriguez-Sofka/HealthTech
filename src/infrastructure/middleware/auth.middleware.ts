@@ -15,6 +15,7 @@ import { UserRole } from '../../domain/entities/User';
  * Extend Express Request type to include user info
  */
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: {

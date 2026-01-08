@@ -75,7 +75,7 @@ export class CreateUserUseCase {
           break;
 
         case UserRole.NURSE:
-          user = await this.createNurse(dto);
+          user = this.createNurse(dto);
           break;
 
         case UserRole.ADMIN:
@@ -94,7 +94,7 @@ export class CreateUserUseCase {
 
       // Save password hash
       if ('savePasswordHash' in this.userRepository && typeof this.userRepository.savePasswordHash === 'function') {
-        await this.userRepository.savePasswordHash(user.id, passwordHash);
+        this.userRepository.savePasswordHash(user.id, passwordHash);
       }
 
       return {

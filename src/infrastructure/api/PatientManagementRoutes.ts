@@ -20,6 +20,8 @@ import { IDoctorRepository } from '@domain/repositories/IDoctorRepository';
 import { IPatientCommentRepository } from '@domain/repositories/IPatientCommentRepository';
 import { IUserRepository } from '@domain/repositories/IUserRepository';
 import { CommentType } from '@domain/entities/PatientComment';
+import { PatientStatus, PatientPriority } from '@domain/entities/Patient';
+import { AddCommentBody } from './request-types';
 
 export class PatientManagementRoutes {
   private router: Router;
@@ -112,7 +114,7 @@ export class PatientManagementRoutes {
    * POST /api/v1/patients/:id/comments
    * Agregar comentario a paciente
    */
-  private async addComment(req: Request, res: Response): Promise<void> {
+  private async addComment(req: Request<{ id: string }, Record<string, never>, AddCommentBody & { authorId: string }>, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { authorId, content, type } = req.body;
@@ -144,7 +146,7 @@ export class PatientManagementRoutes {
         CommentType.DISCHARGE
       ];
 
-      if (!validTypes.includes(type as CommentType)) {
+      if (!validTypes.includes(type)) {
         res.status(400).json({
           success: false,
           error: `Type inválido. Debe ser uno de: ${validTypes.join(', ')}`
@@ -162,7 +164,7 @@ export class PatientManagementRoutes {
         patientId: id,
         authorId,
         content,
-        type: type as CommentType
+        type
       });
 
       if (!result.success) {
@@ -191,7 +193,7 @@ export class PatientManagementRoutes {
    * PATCH /api/v1/patients/:id/status
    * Actualizar estado del paciente
    */
-  private async updateStatus(req: Request, res: Response): Promise<void> {
+  private async updateStatus(req: Request<{ id: string }, Record<string, never>, { status: PatientStatus; reason?: string }>, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { status, reason } = req.body;
@@ -264,7 +266,7 @@ export class PatientManagementRoutes {
    * PATCH /api/v1/patients/:id/priority
    * Establecer prioridad manual del paciente (P1-P5)
    */
-  private async setManualPriority(req: Request, res: Response): Promise<void> {
+  private async setManualPriority(req: Request<{ id: string }, Record<string, never>, { priority: PatientPriority | string }>, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { priority } = req.body;

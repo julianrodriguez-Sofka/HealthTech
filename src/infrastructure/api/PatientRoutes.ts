@@ -16,10 +16,11 @@
 import { Router, Request, Response } from 'express';
 import { IPatientRepository } from '@domain/repositories/IPatientRepository';
 import { IVitalsRepository } from '@domain/repositories/IVitalsRepository';
-import { PatientPriority, PatientStatus } from '@domain/entities/Patient';
+import { PatientPriority, PatientStatus, VitalSigns } from '@domain/entities/Patient';
 import { RegisterPatientUseCase } from '@application/use-cases/RegisterPatientUseCase';
 import { IObservable } from '@domain/observers/IObserver';
 import { TriageEvent } from '@domain/observers/TriageEvents';
+import { RegisterPatientBody, UpdatePatientBody } from './request-types';
 
 export class PatientRoutes {
   private router: Router;
@@ -76,7 +77,7 @@ export class PatientRoutes {
    * HUMAN REVIEW: Este endpoint ahora implementa el requisito obligatorio de HU.md:
    * "Una vez registrado, el sistema envía una alerta a todos los Médicos disponibles."
    */
-  private async createPatient(req: Request, res: Response): Promise<void> {
+  private async createPatient(req: Request<Record<string, never>, Record<string, never>, RegisterPatientBody>, res: Response): Promise<void> {
     try {
       const { name, age, gender, symptoms, vitals } = req.body;
 
@@ -167,11 +168,12 @@ export class PatientRoutes {
         registeredAt: output.registeredAt,
         status: 'waiting'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[PatientRoutes] Error creating patient:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error al crear paciente';
       res.status(400).json({
         success: false,
-        error: error.message || 'Error al crear paciente'
+        error: errorMessage
       });
     }
   }
@@ -216,7 +218,7 @@ export class PatientRoutes {
    * PUT /api/v1/patients/:id
    * Actualizar paciente
    */
-  private async updatePatient(req: Request, res: Response): Promise<void> {
+  private async updatePatient(req: Request<{ id: string }, Record<string, never>, UpdatePatientBody>, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -258,11 +260,12 @@ export class PatientRoutes {
       await this.patientRepository.update(patient);
 
       res.status(200).json(patient.toJSON());
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[PatientRoutes] Error updating patient:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error al actualizar paciente';
       res.status(400).json({
         success: false,
-        error: error.message || 'Error al actualizar paciente'
+        error: errorMessage
       });
     }
   }
@@ -319,7 +322,7 @@ export class PatientRoutes {
    * The priority calculation is now handled by RegisterPatientUseCase.
    */
   // @ts-expect-error - Method kept for reference but not actively used
-  private calculatePriority(vitals: any): PatientPriority {
+  private calculatePriority(vitals: VitalSigns): PatientPriority {
     // P1 (Critical) - Riesgo vital inmediato
     if (
       vitals.oxygenSaturation < 90 ||
