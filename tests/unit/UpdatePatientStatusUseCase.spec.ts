@@ -181,7 +181,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Patient not found');
-      expect(mockPatientRepo.save).not.toHaveBeenCalled();
+      expect(mockPatientRepo.saveEntity).not.toHaveBeenCalled();
     });
 
     it('debe retornar error si findById retorna undefined', async () => {
@@ -225,8 +225,8 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
       await useCase.execute(dto);
 
-      expect(mockPatientRepo.save).toHaveBeenCalledWith(mockPatient);
-      expect(mockPatientRepo.save).toHaveBeenCalledTimes(1);
+      expect(mockPatientRepo.saveEntity).toHaveBeenCalledWith(mockPatient);
+      expect(mockPatientRepo.saveEntity).toHaveBeenCalledTimes(1);
     });
 
     it('debe retornar success: true en caso exitoso', async () => {
@@ -375,7 +375,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Query timeout');
-      expect(mockPatientRepo.save).not.toHaveBeenCalled();
+      expect(mockPatientRepo.saveEntity).not.toHaveBeenCalled();
     });
 
     it('debe capturar errores del método updateStatus', async () => {
@@ -452,7 +452,7 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
 
       expect(result.success).toBe(true);
       expect(mockPatient.status).toBe(PatientStatus.DISCHARGED);
-      expect(mockPatientRepo.save).toHaveBeenCalledTimes(3);
+      expect(mockPatientRepo.saveEntity).toHaveBeenCalledTimes(3);
     });
 
     it('debe manejar status ya establecido (idempotencia)', async () => {
@@ -472,4 +472,5 @@ describe('UpdatePatientStatusUseCase (TDD)', () => {
     });
   });
 });
+
 

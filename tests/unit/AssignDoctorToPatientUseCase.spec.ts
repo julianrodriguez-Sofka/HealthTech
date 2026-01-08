@@ -300,7 +300,7 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
 
       expect(result.success).toBe(true);
       expect(result.error).toBeUndefined();
-      expect(mockPatientRepo.save).toHaveBeenCalledWith(mockPatient);
+      expect(mockPatientRepo.saveEntity).toHaveBeenCalledWith(mockPatient);
       expect(mockDoctorRepo.save).toHaveBeenCalledWith(mockDoctor);
     });
 
@@ -430,9 +430,9 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
 
       await useCase.execute(dto);
 
-      expect(mockPatientRepo.save).toHaveBeenCalledTimes(1);
+      expect(mockPatientRepo.saveEntity).toHaveBeenCalledTimes(1);
       expect(mockDoctorRepo.save).toHaveBeenCalledTimes(1);
-      expect(mockPatientRepo.save).toHaveBeenCalledWith(mockPatient);
+      expect(mockPatientRepo.saveEntity).toHaveBeenCalledWith(mockPatient);
       expect(mockDoctorRepo.save).toHaveBeenCalledWith(mockDoctor);
     });
   });
@@ -540,5 +540,6 @@ describe('AssignDoctorToPatientUseCase (TDD)', () => {
     });
   });
 });
+
 
 

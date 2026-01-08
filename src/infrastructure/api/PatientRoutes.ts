@@ -194,7 +194,18 @@ export class PatientRoutes {
         return;
       }
 
-      const patient = await this.patientRepository.findById(id);
+      const patientResult = await this.patientRepository.findById(id);
+
+      // HUMAN REVIEW: findById retorna Result<PatientData | null>
+      if (patientResult.isFailure) {
+        res.status(500).json({
+          success: false,
+          error: 'Error al obtener paciente'
+        });
+        return;
+      }
+
+      const patient = patientResult.value;
 
       if (!patient) {
         res.status(404).json({

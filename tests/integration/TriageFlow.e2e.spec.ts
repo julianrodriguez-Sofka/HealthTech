@@ -2,10 +2,10 @@
  * Triage System E2E Tests
  * 
  * Tests end-to-end que simulan el flujo completo del sistema de triage:
- * 1. Registro de paciente con síntomas
- * 2. Cálculo automático de prioridad (triage)
- * 3. Asignación a médico disponible
- * 4. Adición de comentarios médicos
+ * 1. Registro de paciente con sï¿½ntomas
+ * 2. Cï¿½lculo automï¿½tico de prioridad (triage)
+ * 3. Asignaciï¿½n a mï¿½dico disponible
+ * 4. Adiciï¿½n de comentarios mï¿½dicos
  * 5. Cambio de estado del paciente
  * 6. Consulta de pacientes asignados
  * 7. Alta del paciente
@@ -33,6 +33,7 @@ import { Patient, PatientStatus } from '../../src/domain/entities/Patient';
 import { Doctor, MedicalSpecialty } from '../../src/domain/entities/Doctor';
 import { User, UserRole, UserStatus } from '../../src/domain/entities/User';
 import { PatientComment, CommentType } from '../../src/domain/entities/PatientComment';
+import { Result } from '../../src/shared/Result';
 
 describe('Triage System E2E Tests', () => {
   let app: Application;
@@ -61,6 +62,12 @@ describe('Triage System E2E Tests', () => {
       findByDocumentId: jest.fn(),
       findByDoctor: jest.fn(),
       delete: jest.fn(),
+      // HUMAN REVIEW: Agregar mÃ©todos de entidades para RegisterPatientUseCase
+      saveEntity: jest.fn(),
+      findEntityById: jest.fn(),
+      findAllEntities: jest.fn(),
+      findByDoctorId: jest.fn(),
+      update: jest.fn(),
     } as any;
 
     mockDoctorRepo = {
@@ -150,7 +157,7 @@ describe('Triage System E2E Tests', () => {
 
     // Patient routes (doctor/nurse/admin)
     const mockVitalsRepo: jest.Mocked<IVitalsRepository> = {
-      save: jest.fn(),
+      save: jest.fn().mockResolvedValue(Result.ok({} as any)), // Default para RegisterPatientUseCase
       findByPatientId: jest.fn(),
       findLatest: jest.fn(),
       findByDateRange: jest.fn(),
@@ -159,7 +166,7 @@ describe('Triage System E2E Tests', () => {
     const mockEventBus: jest.Mocked<IObservable<TriageEvent>> = {
       attach: jest.fn(),
       detach: jest.fn(),
-      notify: jest.fn(),
+      notify: jest.fn().mockResolvedValue(undefined), // Default para RegisterPatientUseCase
     } as any;
 
     const patientRoutes = new PatientRoutes(mockPatientRepo, mockVitalsRepo, mockEventBus);
@@ -186,16 +193,16 @@ describe('Triage System E2E Tests', () => {
     );
   });
 
-  describe('E2E Flow: Paciente Crítico', () => {
-    it('Paso 1: Debe registrar un paciente con síntomas críticos', async () => {
+  describe('E2E Flow: Paciente Crï¿½tico', () => {
+    it('Paso 1: Debe registrar un paciente con sï¿½ntomas crï¿½ticos', async () => {
       // HUMAN REVIEW: Verify critical patient criteria
       const patientData = {
         name: 'Juan Urgente',
         age: 55,
         gender: 'male',
         documentId: 'E2E-001',
-        reason: 'Dolor torácico intenso',
-        symptoms: ['Dolor de pecho', 'Dificultad para respirar', 'Sudoración'],
+        reason: 'Dolor torï¿½cico intenso',
+        symptoms: ['Dolor de pecho', 'Dificultad para respirar', 'Sudoraciï¿½n'],
         vitals: {
           heartRate: 130, // Tachycardia
           bloodPressure: '160/100', // Hypertension
@@ -210,7 +217,7 @@ describe('Triage System E2E Tests', () => {
         // Create Patient entity from data to capture in registeredPatient
         const patient = Patient.fromPersistence(patientData);
         registeredPatient = patient;
-        return { isSuccess: true, value: patientData } as any;
+        return Result.ok(patientData);
       });
 
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
@@ -231,7 +238,7 @@ describe('Triage System E2E Tests', () => {
       expect(registeredPatient.status).toBe(PatientStatus.WAITING);
     });
 
-    it('Paso 2: Debe asignar el paciente crítico a un médico disponible', async () => {
+    it('Paso 2: Debe asignar el paciente crï¿½tico a un mï¿½dico disponible', async () => {
       expect(registeredPatient).toBeDefined();
 
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
@@ -249,7 +256,7 @@ describe('Triage System E2E Tests', () => {
       expect(response.body.message).toContain('asignado');
     });
 
-    it('Paso 3: Debe agregar comentario de diagnóstico inicial', async () => {
+    it('Paso 3: Debe agregar comentario de diagnï¿½stico inicial', async () => {
       expect(registeredPatient).toBeDefined();
 
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
@@ -260,7 +267,7 @@ describe('Triage System E2E Tests', () => {
         authorId: mockDoctor.id,
         authorName: mockDoctor.name,
         authorRole: 'doctor',
-        content: 'Sospecha de síndrome coronario agudo. Se solicita ECG urgente y troponinas.',
+        content: 'Sospecha de sï¿½ndrome coronario agudo. Se solicita ECG urgente y troponinas.',
         type: CommentType.DIAGNOSIS,
       });
       mockCommentRepo.save.mockResolvedValue(undefined);
@@ -270,7 +277,7 @@ describe('Triage System E2E Tests', () => {
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
           authorId: mockDoctor.id,
-          content: 'Sospecha de síndrome coronario agudo. Se solicita ECG urgente y troponinas.',
+          content: 'Sospecha de sï¿½ndrome coronario agudo. Se solicita ECG urgente y troponinas.',
           type: 'diagnosis',
         })
         .expect(201);
@@ -310,7 +317,7 @@ describe('Triage System E2E Tests', () => {
         authorId: mockDoctor.id,
         authorName: mockDoctor.name,
         authorRole: 'doctor',
-        content: 'Administrado AAS 300mg, nitroglicerina sublingual. ECG muestra elevación del ST. Se activa código infarto.',
+        content: 'Administrado AAS 300mg, nitroglicerina sublingual. ECG muestra elevaciï¿½n del ST. Se activa cï¿½digo infarto.',
         type: CommentType.TREATMENT,
       });
       mockCommentRepo.save.mockResolvedValue(undefined);
@@ -320,7 +327,7 @@ describe('Triage System E2E Tests', () => {
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
           authorId: mockDoctor.id,
-          content: 'Administrado AAS 300mg, nitroglicerina sublingual. ECG muestra elevación del ST. Se activa código infarto.',
+          content: 'Administrado AAS 300mg, nitroglicerina sublingual. ECG muestra elevaciï¿½n del ST. Se activa cï¿½digo infarto.',
           type: 'treatment',
         })
         .expect(201);
@@ -328,7 +335,7 @@ describe('Triage System E2E Tests', () => {
       expect(response.body.success).toBe(true);
     });
 
-    it('Paso 6: Médico debe poder ver sus pacientes asignados', async () => {
+    it('Paso 6: Mï¿½dico debe poder ver sus pacientes asignados', async () => {
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
       mockDoctorRepo.findById.mockResolvedValue(mockDoctor);
       mockPatientRepo.findByDoctorId.mockResolvedValue([registeredPatient]);
@@ -353,7 +360,7 @@ describe('Triage System E2E Tests', () => {
           authorId: mockDoctor.id,
           authorName: mockDoctor.name,
           authorRole: 'doctor',
-          content: 'Diagnóstico inicial',
+          content: 'Diagnï¿½stico inicial',
           type: CommentType.DIAGNOSIS,
         }),
         PatientComment.create({
@@ -387,7 +394,7 @@ describe('Triage System E2E Tests', () => {
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
           status: 'stabilized',
-          reason: 'Paciente estabilizado post-intervención',
+          reason: 'Paciente estabilizado post-intervenciï¿½n',
         })
         .expect(200);
 
@@ -406,7 +413,7 @@ describe('Triage System E2E Tests', () => {
         .set('Authorization', `Bearer ${doctorToken}`)
         .send({
           status: 'discharged',
-          reason: 'Alta médica, transferido a cardiología',
+          reason: 'Alta mï¿½dica, transferido a cardiologï¿½a',
         })
         .expect(200);
 
@@ -418,9 +425,9 @@ describe('Triage System E2E Tests', () => {
   describe('E2E Flow: Paciente No Urgente', () => {
     let nonUrgentPatient: Patient;
 
-    it('Debe registrar paciente con síntomas leves (baja prioridad)', async () => {
+    it('Debe registrar paciente con sï¿½ntomas leves (baja prioridad)', async () => {
       const patientData = {
-        name: 'María Consulta',
+        name: 'Marï¿½a Consulta',
         age: 28,
         gender: 'female',
         documentId: 'E2E-002',
@@ -457,7 +464,7 @@ describe('Triage System E2E Tests', () => {
       expect(nonUrgentPatient.priority).toBeGreaterThanOrEqual(4);
     });
 
-    it('Médico puede ajustar prioridad manualmente si necesario', async () => {
+    it('Mï¿½dico puede ajustar prioridad manualmente si necesario', async () => {
       expect(nonUrgentPatient).toBeDefined();
 
       mockUserRepo.findById.mockResolvedValue(mockDoctor);
@@ -500,7 +507,7 @@ describe('Triage System E2E Tests', () => {
   });
 
   describe('E2E Flow: Validaciones y Errores', () => {
-    it('Debe rechazar registro sin autenticación', async () => {
+    it('Debe rechazar registro sin autenticaciï¿½n', async () => {
       await request(app)
         .post('/api/v1/patients')
         .send({
@@ -535,7 +542,7 @@ describe('Triage System E2E Tests', () => {
       expect(response.body.success).toBe(false);
     });
 
-    it('Debe rechazar prioridad manual inválida', async () => {
+    it('Debe rechazar prioridad manual invï¿½lida', async () => {
       const patient = Patient.create({
         name: 'Test',
         age: 30,
