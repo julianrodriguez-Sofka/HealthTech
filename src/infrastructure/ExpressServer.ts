@@ -18,7 +18,6 @@ import { RabbitMQConnection } from './messaging/rabbitmq-connection';
 import { WebSocketServer } from './sockets/websocket-server';
 import { UserRoutes } from './api/UserRoutes';
 import { PatientRoutes } from './api/PatientRoutes';
-import { PatientManagementRoutes } from './api/PatientManagementRoutes';
 import { authRouter } from './api/AuthRoutes';
 import { AuthService } from '../application/services/AuthService';
 import { User, UserRole, UserStatus } from '../domain/entities/User';
@@ -36,6 +35,7 @@ import { TriageQueueManager } from './messaging/triage-queue-manager';
 // HUMAN REVIEW: Importar entidades Doctor y Nurse para crearlas correctamente en seedTestUsers
 import { Doctor, MedicalSpecialty } from '../domain/entities/Doctor';
 import { Nurse, NurseArea } from '../domain/entities/Nurse';
+import { getJwtSecret } from '../shared/config';
 
 /**
  * Clase principal del servidor Express
@@ -210,7 +210,8 @@ class ExpressServer {
     });
 
     // HUMAN REVIEW: Authentication Routes
-    const jwtSecret = process.env.JWT_SECRET || 'healthtech-dev-secret-key-2026';
+    // SECURITY: Usar helper centralizado para obtener JWT_SECRET de forma segura
+    const jwtSecret = getJwtSecret();
     const authService = new AuthService(this.userRepository, jwtSecret);
     this.app.use('/api/v1/auth', authRouter(authService));
 
@@ -427,7 +428,8 @@ class ExpressServer {
    * HUMAN REVIEW: This creates default users with hashed passwords for Postman/Newman tests
    */
   private async seedTestUsers(): Promise<void> {
-    const jwtSecret = process.env.JWT_SECRET || 'healthtech-dev-secret-key-2026';
+    // SECURITY: Usar helper centralizado para obtener JWT_SECRET de forma segura
+    const jwtSecret = getJwtSecret();
     const authService = new AuthService(this.userRepository, jwtSecret);
 
     try {

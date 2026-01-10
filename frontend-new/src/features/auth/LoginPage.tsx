@@ -17,8 +17,21 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // SECURITY: Validar que email y password estén presentes (no usar valores por defecto)
+      if (!email || !email.trim()) {
+        setError('El correo electrónico es requerido');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!password || !password.trim()) {
+        setError('La contraseña es requerida');
+        setIsLoading(false);
+        return;
+      }
+
       // HUMAN REVIEW: LoginCredentials solo necesita email y password, no role
-      await login({ email, password: password || 'password123' });
+      await login({ email, password });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     } finally {

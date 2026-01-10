@@ -19,6 +19,7 @@ import { UserRole, UserStatus } from '../../domain/entities/User';
 import { MedicalSpecialty } from '../../domain/entities/Doctor';
 import { NurseArea } from '../../domain/entities/Nurse';
 import { CreateUserBody, UpdateUserProfileBody } from './request-types';
+import { getJwtSecret } from '../../shared/config';
 
 export class UserRoutes {
   private router: Router;
@@ -29,8 +30,8 @@ export class UserRoutes {
     private readonly doctorRepository: IDoctorRepository
   ) {
     this.router = Router();
-    // Initialize AuthService with userRepository and JWT secret
-    const jwtSecret = process.env.JWT_SECRET || 'healthtech-dev-secret-key-2026';
+    // SECURITY: Usar helper centralizado para obtener JWT_SECRET de forma segura
+    const jwtSecret = getJwtSecret();
     this.authService = new AuthService(userRepository, jwtSecret);
     this.configureRoutes();
   }

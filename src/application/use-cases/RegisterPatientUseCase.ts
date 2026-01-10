@@ -21,9 +21,10 @@ import { IVitalsRepository, VitalsData } from '@domain/repositories/IVitalsRepos
 import { TriageEngine } from '@domain/TriageEngine';
 import { IObservable } from '@domain/observers/IObserver';
 import { TriageEvent, createPatientRegisteredEvent } from '@domain/observers/TriageEvents';
-import { Patient, PatientPriority, PatientStatus, VitalSigns } from '@domain/entities/Patient';
+import { Patient, PatientPriority, PatientStatus } from '@domain/entities/Patient';
 import { Result } from '@shared/Result';
 import { Logger } from '@shared/Logger';
+import { generateSecureId } from '@shared/config';
 
 /**
  * DTO de entrada para el use case
@@ -342,16 +343,18 @@ export class RegisterPatientUseCase {
 
   /**
    * Genera ID único para paciente
-   * HUMAN REVIEW: En producción, usar UUID v4 o estrategia de BD
+   * SECURITY: Usa generateSecureId() con crypto.randomUUID() en lugar de Math.random()
+   * HUMAN REVIEW: En producción, considerar usar UUID v4 de PostgreSQL o estrategia de BD
    */
   private generatePatientId(): string {
-    return `patient-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    return generateSecureId('patient');
   }
 
   /**
    * Genera ID único para registro de signos vitales
+   * SECURITY: Usa generateSecureId() con crypto.randomUUID() en lugar de Math.random()
    */
   private generateVitalsId(): string {
-    return `vitals-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    return generateSecureId('vitals');
   }
 }
