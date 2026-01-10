@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Mail, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
-import { Button, Input, Select, Alert, Card } from '@/components/ui';
+import { Heart, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Button, Input, Alert, Card } from '@/components/ui';
 import { useAuth } from './AuthContext';
-import { UserRole } from '@/types';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>(UserRole.DOCTOR);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -26,19 +24,6 @@ export const LoginPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const quickAccess = [
-    { role: UserRole.NURSE, email: 'ana.garcia@healthtech.com', name: 'Ana García', color: 'from-emerald-500 to-teal-500' },
-    { role: UserRole.DOCTOR, email: 'carlos.mendoza@healthtech.com', name: 'Dr. Carlos Mendoza', color: 'from-blue-500 to-cyan-500' },
-    { role: UserRole.ADMIN, email: 'admin@healthtech.com', name: 'María Rodríguez', color: 'from-purple-500 to-pink-500' }
-  ];
-
-  const handleQuickAccess = (userEmail: string, _userRole: UserRole) => {
-    // HUMAN REVIEW: Establecer email y contraseña por defecto para acceso rápido
-    setEmail(userEmail);
-    setPassword('password123');
-    setRole(_userRole); // Mantener role para consistencia con el formulario
   };
 
   return (
@@ -97,33 +82,20 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 pt-4">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              ⚡ Acceso Rápido
-            </h3>
-            {quickAccess.map((qa) => (
-              <motion.button
-                key={qa.email}
-                whileHover={{ scale: 1.02, x: 5 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleQuickAccess(qa.email, qa.role)}
-                className={`
-                  p-4 rounded-xl text-left
-                  bg-gradient-to-r ${qa.color}
-                  text-white font-medium
-                  shadow-lg hover:shadow-xl
-                  transition-all duration-200
-                  flex items-center justify-between
-                `}
-              >
-                <div>
-                  <div className="text-sm opacity-90">{qa.role}</div>
-                  <div className="font-semibold">{qa.name}</div>
-                </div>
-                <ArrowRight className="w-5 h-5" />
-              </motion.button>
-            ))}
-          </div>
+          {/* Medical Illustration */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex items-center justify-center pt-8"
+          >
+            <img
+              src="/signofhealth_medical_10742.png"
+              alt="HealthTech Medical Illustration"
+              className="max-w-full h-auto drop-shadow-2xl"
+              style={{ maxWidth: '400px', height: 'auto' }}
+            />
+          </motion.div>
         </motion.div>
 
         {/* Right Side - Login Form */}
@@ -150,18 +122,6 @@ export const LoginPage: React.FC = () => {
               )}
 
               <div className="space-y-4">
-                <Select
-                  label="Rol"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  options={[
-                    { value: UserRole.NURSE, label: '👨‍⚕️ Enfermero/a' },
-                    { value: UserRole.DOCTOR, label: '👨‍⚕️ Médico/a' },
-                    { value: UserRole.ADMIN, label: '👤 Administrador/a' }
-                  ]}
-                  required
-                />
-
                 <Input
                   label="Correo Electrónico"
                   type="email"
@@ -179,7 +139,6 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Ingresa tu contraseña"
                   leftIcon={<Lock className="w-5 h-5" />}
-                  helperText="Autenticación simulada - no se requiere contraseña"
                 />
               </div>
 
@@ -193,13 +152,6 @@ export const LoginPage: React.FC = () => {
               >
                 Ingresar al Sistema
               </Button>
-
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>Sistema en modo demostración</span>
-                </div>
-              </div>
             </form>
           </Card>
         </motion.div>
