@@ -168,12 +168,12 @@ services:
     container_name: healthtech-frontend
     restart: unless-stopped
     ports:
-      - "80:80"  # Nginx HTTP
+      - "3003:80"  # Nginx HTTP (puerto 3003 en host, 80 en contenedor)
     depends_on:
       app:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -226,7 +226,7 @@ networks:
 #   http://localhost:15672 (admin / admin2026)
 #
 # Acceder a la aplicación:
-#   Frontend: http://localhost
+#   Frontend: http://localhost:3003
 #   API Backend: http://localhost:3000
 #   WebSocket: ws://localhost:3000
 #

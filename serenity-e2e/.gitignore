@@ -1,0 +1,40 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# Serenity reports
+target/
+.serenity/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Maven
+.mvn/
+
+# Test results
+test-results/
+test-output/
+
+# Screenshots
+screenshots/
+
+# ChromeDriver
+chromedriver*
+geckodriver*
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
