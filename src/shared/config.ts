@@ -31,13 +31,14 @@ export function getJwtSecret(): string {
       );
     }
 
-    // En desarrollo, usar fallback con advertencia
-    const defaultSecret = 'healthtech-dev-secret-key-2026';
+    // En desarrollo, generar un secret temporal basado en crypto
+    // SECURITY: No hardcodear secrets - generar dinámicamente para dev
+    const devSecret = `dev-${randomUUID()}-${Date.now()}`;
     console.warn(
-      '⚠️  SECURITY WARNING: JWT_SECRET not set. Using default secret for development only. ' +
+      '⚠️  SECURITY WARNING: JWT_SECRET not set. Using generated secret for development only. ' +
       'This should NEVER be used in production!'
     );
-    return defaultSecret;
+    return devSecret;
   }
 
   // Validar que el secret tenga una longitud mínima razonable
