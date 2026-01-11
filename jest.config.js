@@ -46,21 +46,39 @@ module.exports = {
   coverageDirectory: 'coverage',
 
   // Archivos/carpetas a incluir en el análisis de cobertura
-  // HUMAN REVIEW: Solo medimos archivos core para simplificar el taller
+  // Incluye todos los archivos core del proyecto (dominio, aplicación, shared)
   collectCoverageFrom: [
-    // Domain layer - core business logic
+    // Domain layer - entities
     'src/domain/entities/Patient.ts',
     'src/domain/entities/Doctor.ts',
     'src/domain/entities/User.ts',
+    'src/domain/entities/Nurse.ts',
+    'src/domain/entities/PatientComment.ts',
+    // Domain layer - core logic
     'src/domain/TriageEngine.ts',
     'src/domain/observers/*.ts',
-    // Application layer - use cases y observers
+    'src/domain/errors/*.ts',
+    // Application layer - observers
     'src/application/observers/*.ts',
+    // Application layer - use cases
     'src/application/use-cases/RegisterPatientUseCase.ts',
+    'src/application/use-cases/AssignDoctorToPatientUseCase.ts',
+    'src/application/use-cases/UpdatePatientStatusUseCase.ts',
+    'src/application/use-cases/AddCommentToPatientUseCase.ts',
+    'src/application/use-cases/CreateUserUseCase.ts',
+    'src/application/use-cases/GetDoctorPatientsUseCase.ts',
+    // Application layer - services
     'src/application/services/AuthService.ts',
+    'src/application/VitalsService.ts',
+    'src/application/PatientService.ts',
+    'src/application/NotificationService.ts',
+    'src/application/AuditService.ts',
     // Shared - utilities
     'src/shared/Result.ts',
     'src/shared/validators.ts',
+    // Exclude index files and types
+    '!src/**/index.ts',
+    '!src/**/*.d.ts',
   ],
 
   // Umbrales mínimos de cobertura - Simplificado para el taller
