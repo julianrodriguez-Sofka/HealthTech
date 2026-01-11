@@ -1,0 +1,268 @@
+# ===================================================================
+# US-002: Ingreso de Signos Vitales
+# ===================================================================
+# Historia de Usuario:
+# Como profesional de la salud
+# Quiero ingresar los signos vitales de un paciente
+# Para que el sistema pueda calcular su prioridad de triaje
+#
+# Criterios de Aceptación:
+# - El sistema debe validar que todos los signos vitales estén presentes
+# - Los valores deben estar dentro de rangos fisiológicos extremos
+# - Debe detectar valores críticos y anormales
+# - Debe persistir los datos en el repositorio
+# - Debe retornar el registro completo con metadata
+# ===================================================================
+
+paths:
+  /api/v1/vitals:
+    post:
+      tags:
+        - Vitals
+      summary: Registrar signos vitales de un paciente (US-002)
+      description: |
+        Registra los signos vitales de un paciente y valida que estén
+        dentro de rangos fisiológicos aceptables.
+        
+        **Validaciones aplicadas:**
+        - Frecuencia cardíaca: 0-300 bpm
+        - Temperatura: 0-45°C
+        - Saturación de oxígeno: 0-100%
+        - Presión arterial sistólica: 0-300 mmHg
+        
+        **Detección automática:**
+        - `isAbnormal`: true si algún valor está fuera de rango normal
+        - `isCritical`: true si requiere atención médica inmediata
+        
+        **Rangos normales (adultos):**
+        - FC: 60-100 bpm
+        - Temperatura: 36.5-37.5°C
+        - SpO2: 95-100%
+        - PAS: 90-140 mmHg
+        
+        **Criterios de criticidad:**
+        - FC < 40 o > 130 bpm
+        - Temperatura < 35°C o > 40°C
+        - SpO2 < 90%
+        - PAS < 70 mmHg o > 180 mmHg
+      operationId: recordVitals
+      requestBody:
+        required: true
+        description: Datos de signos vitales a registrar
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VitalSignsInput'
+            examples:
+              normalVitals:
+                summary: Signos vitales normales
+                description: Paciente con signos vitales dentro de rangos normales
+                value:
+                  patientId: "550e8400-e29b-41d4-a716-446655440000"
+                  heartRate: 75
+                  temperature: 36.8
+                  oxygenSaturation: 98
+                  systolicBP: 120
+              
+              criticalVitals:
+                summary: Signos vitales críticos
+                description: Paciente con hipoxemia severa (requiere atención inmediata)
+                value:
+                  patientId: "550e8400-e29b-41d4-a716-446655440000"
+                  heartRate: 135
+                  temperature: 41.2
+                  oxygenSaturation: 85
+                  systolicBP: 185
+              
+              abnormalVitals:
+                summary: Signos vitales anormales (no críticos)
+                description: Valores fuera de rango normal pero no de emergencia
+                value:
+                  patientId: "550e8400-e29b-41d4-a716-446655440000"
+                  heartRate: 105
+                  temperature: 38.2
+                  oxygenSaturation: 94
+                  systolicBP: 145
+      
+      responses:
+        '201':
+          description: Signos vitales registrados exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/RecordedVitals'
+              examples:
+                normalVitalsResponse:
+                  summary: Respuesta exitosa - Vitales normales
+                  value:
+                    success: true
+                    data:
+                      id: "660e8400-e29b-41d4-a716-446655440001"
+                      patientId: "550e8400-e29b-41d4-a716-446655440000"
+                      heartRate: 75
+                      temperature: 36.8
+                      oxygenSaturation: 98
+                      systolicBP: 120
+                      recordedAt: "2026-01-06T10:30:00Z"
+                      isAbnormal: false
+                      isCritical: false
+                
+                criticalVitalsResponse:
+                  summary: Respuesta exitosa - Vitales críticos
+                  value:
+                    success: true
+                    data:
+                      id: "660e8400-e29b-41d4-a716-446655440001"
+                      patientId: "550e8400-e29b-41d4-a716-446655440000"
+                      heartRate: 135
+                      temperature: 41.2
+                      oxygenSaturation: 85
+                      systolicBP: 185
+                      recordedAt: "2026-01-06T10:30:00Z"
+                      isAbnormal: true
+                      isCritical: true
+        
+        '400':
+          $ref: '#/components/responses/BadRequest'
+          description: |
+            Errores posibles:
+            - MISSING_VITALS: Falta algún campo requerido
+            - VITALS_VALIDATION_ERROR: Valores negativos o inválidos
+            - PHYSIOLOGICAL_LIMIT_EXCEEDED: Valores fuera de rangos extremos
+        
+        '404':
+          $ref: '#/components/responses/NotFound'
+          description: |
+            Errores posibles:
+            - PATIENT_NOT_FOUND: El paciente no existe en el sistema
+        
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/vitals/{patientId}/latest:
+    get:
+      tags:
+        - Vitals
+      summary: Obtener últimos signos vitales de un paciente
+      description: Recupera el registro más reciente de signos vitales de un paciente
+      operationId: getLatestVitals
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          description: ID único del paciente
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      
+      responses:
+        '200':
+          description: Signos vitales encontrados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/RecordedVitals'
+        
+        '404':
+          description: No se encontraron signos vitales para este paciente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error:
+                  code: "NO_VITALS_FOUND"
+                  message: "No vital signs found for patient 550e8400-e29b-41d4-a716-446655440000"
+                timestamp: 1704537000000
+        
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/vitals/{patientId}/history:
+    get:
+      tags:
+        - Vitals
+      summary: Obtener historial de signos vitales
+      description: Recupera todos los registros de signos vitales de un paciente
+      operationId: getVitalsHistory
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          description: ID único del paciente
+          schema:
+            type: string
+            format: uuid
+        
+        - name: startDate
+          in: query
+          required: false
+          description: Fecha inicial del rango (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+            example: "2026-01-01T00:00:00Z"
+        
+        - name: endDate
+          in: query
+          required: false
+          description: Fecha final del rango (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+            example: "2026-01-06T23:59:59Z"
+        
+        - name: limit
+          in: query
+          required: false
+          description: Número máximo de resultados
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      
+      responses:
+        '200':
+          description: Historial recuperado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RecordedVitals'
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 25
+                      limit:
+                        type: integer
+                        example: 50
+        
+        '404':
+          $ref: '#/components/responses/NotFound'
+        
+        '500':
+          $ref: '#/components/responses/InternalServerError'

@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Build output
 dist/
@@ -38,5 +37,9 @@ yarn-error.log*
 # TypeScript cache
 *.tsbuildinfo
 
-# Optional: Keep package-lock.json for consistent builds
+# Docker volumes (optional)
+# postgres_data/
+# rabbitmq_data/
+
+# Keep package-lock.json for consistent builds
 !package-lock.json

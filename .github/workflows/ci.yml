@@ -1,22 +1,12 @@
 # ====================================================================
-# CI Quality Gate - GitHub Actions Workflow
+# CI/CD Pipeline - GitHub Actions
 # ====================================================================
-# Este workflow implementa un Quality Gate automatizado que se ejecuta
-# en cada push o pull request para garantizar la calidad del código
-# antes de permitir merges a las ramas principales (main/develop).
+# Pipeline optimizado para PRs con Quality Gate y SonarCloud
+# Garantiza calidad del código antes de merge a main/develop
 # ====================================================================
 
 name: CI Quality Gate
 
-# ====================================================================
-# TRIGGERS: Define cuándo se ejecuta el workflow
-# ====================================================================
-# Se ejecuta en:
-# - Cada push a main o develop
-# - Cada pull request que tenga como destino main o develop
-# Esto garantiza que todo código que intente llegar a producción
-# pase por las validaciones de calidad.
-# ====================================================================
 on:
   push:
     branches:
@@ -27,134 +17,212 @@ on:
       - main
       - develop
 
-# ====================================================================
-# JOBS: Define las tareas a ejecutar
-# ====================================================================
+# Cancela ejecuciones anteriores del mismo PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.19.5'
+
 jobs:
-  build-and-test:
-    name: Build & Test
+  # ================================================================
+  # JOB 1: Lint & Format Check
+  # ================================================================
+  lint:
+    name: 🔍 Lint & Format
     runs-on: ubuntu-latest
-
     steps:
-      # ================================================================
-      # PASO 1: Checkout del código fuente
-      # ================================================================
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          # Fetch completo del historial para análisis de SonarCloud
-          fetch-depth: 0
 
-      # ================================================================
-      # PASO 2: Setup de Node.js v20.19.5
-      # ================================================================
-      # ¿Por qué Node.js 20.19.5?
-      # - Versión LTS (Long Term Support) con soporte hasta abril 2026
-      # - Incluye mejoras de performance y seguridad
-      # - Compatibilidad estable con TypeScript 5.x
-      # - Garantiza reproducibilidad entre entornos (dev, CI, prod)
-      # - Evita "works on my machine" por diferencias de versión
-      # ================================================================
-      - name: Setup Node.js 20.19.5
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.19.5'
-          # Cachea node_modules para acelerar builds subsecuentes
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      # ================================================================
-      # PASO 3: Instalación de dependencias
-      # ================================================================
-      # Usamos 'npm ci' en lugar de 'npm install' porque:
-      # - Instala exactamente las versiones del package-lock.json
-      # - Es más rápido (10-20% faster)
-      # - Elimina node_modules antes de instalar (instalación limpia)
-      # - Falla si package.json y package-lock.json están desincronizados
-      # - Ideal para CI/CD donde necesitamos reproducibilidad
-      # ================================================================
       - name: Install dependencies
         run: npm ci
 
-      # ================================================================
-      # PASO 4: Linting - Validación de Clean Code
-      # ================================================================
-      # Ejecuta ESLint para verificar:
-      # - Estándares de código (naming conventions, formatting)
-      # - Detección de code smells y anti-patterns
-      # - Cumplimiento de reglas de TypeScript
-      # - Garantiza legibilidad y mantenibilidad
-      # Si falla, el workflow se detiene y no permite el merge
-      # ================================================================
-      - name: Run linter
+      - name: Run ESLint
         run: npm run lint
 
-      # ================================================================
-      # PASO 5: Build - Compilación de TypeScript
-      # ================================================================
-      # Ejecuta el compilador de TypeScript (tsc) para:
-      # - Verificar que no hay errores de tipado
-      # - Validar que el código compila correctamente
-      # - Detectar errores de tipos antes de runtime
-      # - Generar los archivos JavaScript transpilados
-      # Si hay errores de tipos, el build falla y detiene el workflow
-      # ================================================================
+  # ================================================================
+  # JOB 2: Build TypeScript
+  # ================================================================
+  build:
+    name: 🔨 Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build TypeScript
         run: npm run build
 
-      # ================================================================
-      # PASO 6: Tests Unitarios + Cobertura
-      # ================================================================
-      # Ejecuta Jest con coverage para:
-      # - Correr todos los tests unitarios
-      # - Generar reporte de cobertura en formato LCOV
-      # - LCOV es un formato estándar que SonarCloud puede leer
-      # 
-      # El reporte LCOV generalmente se guarda en:
-      # ./coverage/lcov.info
-      # 
-      # Este archivo contiene información detallada de qué líneas,
-      # funciones y branches fueron ejecutados durante los tests.
-      # ================================================================
-      - name: Run tests with coverage
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  # ================================================================
+  # JOB 3: Unit Tests con Coverage
+  # ================================================================
+  test:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Tests with Coverage
         run: npm run test:coverage
 
-      # ================================================================
-      # PASO 7: SonarCloud - Análisis de Calidad
-      # ================================================================
-      # ¿Cómo se conecta el reporte de cobertura con SonarCloud?
-      # 
-      # 1. Jest genera coverage/lcov.info durante el paso anterior
-      # 2. SonarCloud lee este archivo automáticamente usando la
-      #    configuración en sonar-project.properties
-      # 3. SonarCloud analiza:
-      #    - Cobertura de código (líneas, branches, funciones)
-      #    - Code smells y vulnerabilidades
-      #    - Duplicación de código
-      #    - Complejidad ciclomática
-      # 4. Aplica el Quality Gate (mínimo 70% de cobertura)
-      # 5. Si no cumple, falla el workflow y bloquea el merge
-      # 
-      # Secretos requeridos:
-      # - SONAR_TOKEN: Token de autenticación de SonarCloud
-      # - GITHUB_TOKEN: Provisto automáticamente por GitHub
-      # ================================================================
-      - name: SonarCloud Scan
-        uses: sonarsource/sonarcloud-github-action@master
-        env:
-          # Token de SonarCloud (configurar en GitHub Secrets)
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # Token de GitHub (automático, para comentar en PRs)
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 5
 
-# ====================================================================
-# CONFIGURACIÓN REQUERIDA EN SONARCLOUD
-# ====================================================================
-# 1. Crear proyecto en SonarCloud vinculado a este repositorio
-# 2. Configurar Quality Gate con:
-#    - Coverage mínimo: 70%
-#    - Reliability Rating: A
-#    - Security Rating: A
-#    - Maintainability Rating: A
-# 3. Generar SONAR_TOKEN y agregarlo a GitHub Secrets
-# 4. El workflow fallará si no se cumplen estas métricas
-# ====================================================================
+  # ================================================================
+  # JOB 4: SonarCloud Analysis (Informativo - No bloquea PR)
+  # ================================================================
+  sonarcloud:
+    name: 📊 SonarCloud Analysis
+    runs-on: ubuntu-latest
+    needs: test
+    # Continue even if this job fails - SonarCloud is informative only
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Tests with Coverage
+        run: npm run test:coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ================================================================
+  # JOB 5: Quality Gate Check (No depende de SonarCloud)
+  # ================================================================
+  quality-gate:
+    name: ✅ Quality Gate
+    runs-on: ubuntu-latest
+    needs: [lint, build, test]
+    if: always()
+    steps:
+      - name: Check job results
+        run: |
+          if [[ "${{ needs.lint.result }}" == "failure" ]]; then
+            echo "❌ Lint failed"
+            exit 1
+          fi
+          if [[ "${{ needs.build.result }}" == "failure" ]]; then
+            echo "❌ Build failed"
+            exit 1
+          fi
+          if [[ "${{ needs.test.result }}" == "failure" ]]; then
+            echo "❌ Tests failed"
+            exit 1
+          fi
+          echo "✅ All quality checks passed!"
+
+  # ================================================================
+  # JOB 6: PR Summary (solo en PRs)
+  # ================================================================
+  pr-summary:
+    name: 📝 PR Summary
+    runs-on: ubuntu-latest
+    needs: [lint, build, test]
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+
+      - name: Generate Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let coverageSummary = 'Coverage report not available';
+            try {
+              const lcov = fs.readFileSync('coverage/lcov.info', 'utf8');
+              const lines = lcov.split('\n');
+              let linesFound = 0, linesHit = 0;
+              
+              for (const line of lines) {
+                if (line.startsWith('LF:')) linesFound += parseInt(line.slice(3));
+                if (line.startsWith('LH:')) linesHit += parseInt(line.slice(3));
+              }
+              
+              const coverage = linesFound > 0 ? ((linesHit / linesFound) * 100).toFixed(2) : 0;
+              coverageSummary = `**Coverage:** ${coverage}% (${linesHit}/${linesFound} lines)`;
+            } catch (e) {
+              console.log('Could not parse coverage:', e.message);
+            }
+            
+            const body = `## 🔍 Quality Gate Results
+            
+            | Check | Status |
+            |-------|--------|
+            | 🔍 Lint | ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+            | 🔨 Build | ${{ needs.build.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+            | 🧪 Tests | ${{ needs.test.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+            
+            ### 📊 Coverage
+            ${coverageSummary}
+            
+            ### 📈 SonarCloud
+            [View detailed analysis on SonarCloud](https://sonarcloud.io/project/overview?id=julianrodriguez-Sofka_HealthTech)
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

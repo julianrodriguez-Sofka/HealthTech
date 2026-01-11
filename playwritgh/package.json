@@ -1,0 +1,51 @@
+{
+  "name": "healthtech-e2e-tests",
+  "version": "1.0.0",
+  "description": "End-to-end tests for HealthTech application using Playwright with Page Object Model pattern",
+  "scripts": {
+    "pretest": "powershell -ExecutionPolicy Bypass -NoProfile -File ./check-server.ps1 || exit 0",
+    "test": "playwright test",
+    "test:force": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:chrome": "playwright test --project=chromium",
+    "test:edge": "playwright test --project=msedge",
+    "test:firefox": "playwright test --project=firefox",
+    "test:ui": "playwright test --ui",
+    "test:list": "playwright test --list",
+    "test:verify": "playwright test --list --reporter=list",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:regression": "playwright test --grep @regression",
+    "test:auth": "playwright test tests/auth",
+    "test:patient": "playwright test tests/patient",
+    "test:admin": "playwright test tests/admin",
+    "test:dashboard": "playwright test tests/dashboard",
+    "test:e2e": "playwright test tests/e2e",
+    "test:bdd": "playwright test tests/bdd",
+    "test:bdd:ui": "playwright test tests/bdd --ui",
+    "test:bdd:headed": "playwright test tests/bdd --headed",
+    "codegen": "playwright codegen http://localhost:3003",
+    "lint": "eslint tests/**/*.ts",
+    "lint:fix": "eslint tests/**/*.ts --fix",
+    "format": "prettier --write \"tests/**/*.ts\" \"playwright.config.ts\""
+  },
+  "keywords": [
+    "playwright",
+    "e2e",
+    "testing",
+    "pom",
+    "page-object-model"
+  ],
+  "author": "HealthTech Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.41.1",
+    "@types/node": "^20.11.19",
+    "typescript": "^5.3.3",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "prettier": "^3.2.5"
+  }
+}

@@ -1,0 +1,63 @@
+/**
+ * Use Case Directory
+ *
+ * Esta carpeta contiene los casos de uso de la aplicación siguiendo
+ * Clean Architecture / Arquitectura Hexagonal.
+ *
+ * ESTRUCTURA:
+ * - Cada caso de uso debe estar en su propio archivo
+ * - Nombrar archivos con el patrón: <accion>-<entidad>.use-case.ts
+ * - Ejemplos:
+ *   - calculate-triage-priority.use-case.ts
+ *   - register-patient.use-case.ts
+ *   - notify-medical-staff.use-case.ts
+ *
+ * PRINCIPIOS:
+ * 1. Single Responsibility: Un caso de uso = una acción del sistema
+ * 2. Dependency Inversion: Inyectar dependencias (repositories, services)
+ * 3. No lógica de infraestructura aquí (sin SQL, HTTP, frameworks)
+ * 4. Retornar Result<T> para manejo de errores explícito
+ *
+ * HUMAN REVIEW: Los casos de uso orquestan entidades del dominio
+ * y coordinan con repositories/services. NO deben contener lógica de negocio,
+ * esa lógica pertenece a las entidades del dominio.
+ *
+ * EJEMPLO DE ESTRUCTURA:
+ *
+ * export class CalculateTriagePriorityUseCase {
+ *   constructor(
+ *     private readonly patientRepository: IPatientRepository,
+ *     private readonly triageCalculator: ITriageCalculator,
+ *     private readonly observers: ITriageObserver[]
+ *   ) {}
+ *
+ *   async execute(patientId: string): Promise<Result<TriageLevel>> {
+ *     // 1. Obtener datos
+ *     const patient = await this.patientRepository.findById(patientId);
+ *
+ *     // 2. Validar
+ *     if (!patient) {
+ *       return Result.fail(new PatientNotFoundError(patientId));
+ *     }
+ *
+ *     // 3. Ejecutar lógica de dominio
+ *     const priority = this.triageCalculator.calculate(patient.vitals);
+ *
+ *     // 4. Persistir cambios
+ *     patient.updatePriority(priority);
+ *     await this.patientRepository.save(patient);
+ *
+ *     // 5. Notificar observers
+ *     this.notifyObservers(patient, priority);
+ *
+ *     return Result.ok(priority);
+ *   }
+ * }
+ *
+ * US-003: Cálculo de Triaje
+ * Implementar aquí el caso de uso que:
+ * 1. Recibe signos vitales del paciente
+ * 2. Calcula nivel de prioridad (1-5)
+ * 3. Si es nivel 1 o 2, envía a cola RabbitMQ
+ * 4. Notifica vía WebSocket a los médicos
+ */

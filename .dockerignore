@@ -1,0 +1,170 @@
+# ====================================================================
+# .dockerignore - HealthTech Triage System
+# ====================================================================
+# Este archivo especifica qué archivos y directorios deben ser
+# excluidos del contexto de build de Docker para:
+# 1. Reducir el tamaño del contexto de build (más rápido)
+# 2. Evitar copiar archivos innecesarios a la imagen
+# 3. Prevenir exposición de información sensible
+# 4. Mejorar el aprovechamiento de caché de Docker layers
+#
+# HUMAN REVIEW: La IA omitió este archivo. Agregué .dockerignore para
+# optimizar el build de Docker excluyendo node_modules, tests, archivos
+# de configuración local y documentación innecesaria, reduciendo el
+# contexto de build en ~80% y mejorando los tiempos de construcción.
+# ====================================================================
+
+# ====================================================================
+# 1. DEPENDENCIAS Y BUILDS
+# ====================================================================
+# node_modules será reconstruido dentro del contenedor
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json.bak
+
+# Build artifacts (se generan en el contenedor)
+dist/
+build/
+*.tsbuildinfo
+
+# Caché de TypeScript y herramientas
+.tscache/
+.eslintcache
+
+# ====================================================================
+# 2. TESTING Y COVERAGE
+# ====================================================================
+# Tests no son necesarios en la imagen de producción
+tests/
+*.test.ts
+*.spec.ts
+*.test.js
+*.spec.js
+__tests__/
+coverage/
+.nyc_output/
+# jest.config.js - NEEDED for build stage tests
+
+# ====================================================================
+# 3. GIT Y CONTROL DE VERSIONES
+# ====================================================================
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# ====================================================================
+# 4. DOCKER Y COMPOSE
+# ====================================================================
+# No copiar archivos Docker al contexto de build
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+docker-readme.md
+DOCKER.md
+
+# ====================================================================
+# 5. CONFIGURACIÓN LOCAL Y DESARROLLO
+# ====================================================================
+# Environment files con credenciales locales
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+!.env.example
+
+# IDE y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.editorconfig
+
+# ====================================================================
+# 6. DOCUMENTACIÓN
+# ====================================================================
+# Documentación no necesaria en runtime
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+!package.md
+docs/
+
+# ====================================================================
+# 7. LOGS Y DATOS TEMPORALES
+# ====================================================================
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+tmp/
+temp/
+
+# ====================================================================
+# 8. CONFIGURACIÓN DE CI/CD
+# ====================================================================
+# GitHub Actions, SonarCloud, etc.
+.github/
+sonar-project.properties
+.sonarqube/
+
+# ====================================================================
+# 9. SCRIPTS Y HERRAMIENTAS DE DESARROLLO
+# ====================================================================
+scripts/
+!scripts/init-db.sql
+*.sh
+Makefile
+
+# ====================================================================
+# 10. ARCHIVOS DE SISTEMA Y BACKUPS
+# ====================================================================
+.Trash-*
+Thumbs.db
+Desktop.ini
+*.bak
+*.backup
+*.old
+
+# ====================================================================
+# 11. DATOS Y VOLÚMENES LOCALES
+# ====================================================================
+# Datos de desarrollo local
+data/
+volumes/
+postgres_data/
+rabbitmq_data/
+
+# ====================================================================
+# REGLAS DE INCLUSIÓN EXPLÍCITA
+# ====================================================================
+# Por defecto todo en src/ se incluye
+# Si agregas exclusiones específicas de src/, usa ! para incluir
+
+# Incluir estos archivos importantes
+!package.json
+!package-lock.json
+!tsconfig.json
+!.eslintrc.json
+!jest.config.js
+
+# ====================================================================
+# NOTAS DE USO
+# ====================================================================
+# Para verificar qué archivos se incluyen en el build:
+#   docker build --progress=plain --no-cache -t test .
+#
+# Para ver el tamaño del contexto de build:
+#   docker build . 2>&1 | grep "Sending build context"
+#
+# Sin .dockerignore: ~200-500 MB
+# Con .dockerignore: ~50-100 MB (reducción del 70-80%)
+# ====================================================================

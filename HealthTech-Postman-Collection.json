@@ -1,0 +1,526 @@
+{
+  "info": {
+    "name": "HealthTech API - Complete Collection",
+    "description": "Colección completa de la API de HealthTech - Sistema de Triage Médico\n\nIncluye:\n- Gestión de usuarios (Admin/Doctor/Enfermero)\n- Autenticación JWT\n- Registro y gestión de pacientes\n- Sistema de triage automático",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Verifica el estado del sistema y servicios conectados"
+      },
+      "response": []
+    },
+    {
+      "name": "Auth & Users",
+      "item": [
+        {
+          "name": "Create Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@healthtech.com\",\n  \"name\": \"Admin Principal\",\n  \"role\": \"admin\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/users",
+              "host": ["{{apiUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Crea un usuario con rol de administrador"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor@healthtech.com\",\n  \"name\": \"Dr. Juan García\",\n  \"role\": \"doctor\",\n  \"password\": \"doctor123\",\n  \"specialty\": \"Medicina General\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/users",
+              "host": ["{{apiUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Crea un usuario con rol de doctor"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Nurse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"enfermera@healthtech.com\",\n  \"name\": \"Enfermera María López\",\n  \"role\": \"nurse\",\n  \"password\": \"nurse123\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/users",
+              "host": ["{{apiUrl}}"],
+              "path": ["users"]
+            },
+            "description": "Crea un usuario con rol de enfermera"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Guardar token automáticamente",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    const token = response.accessToken || response.token;",
+                  "    ",
+                  "    if (token) {",
+                  "        pm.environment.set(\"token\", token);",
+                  "        pm.environment.set(\"userId\", response.user.id);",
+                  "        pm.environment.set(\"userRole\", response.user.role);",
+                  "        console.log(\"✅ Token guardado exitosamente\");",
+                  "        console.log(\"Usuario:\", response.user.name);",
+                  "        console.log(\"Rol:\", response.user.role);",
+                  "    }",
+                  "}",
+                  "",
+                  "// TEST 1: Validación completa de autenticación",
+                  "pm.test(\"Login exitoso - Status 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token JWT recibido\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('accessToken');",
+                  "    pm.expect(response.accessToken).to.be.a('string');",
+                  "    pm.expect(response.accessToken.length).to.be.above(20);",
+                  "});",
+                  "",
+                  "pm.test(\"Usuario tiene estructura correcta\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('user');",
+                  "    pm.expect(response.user).to.have.property('id');",
+                  "    pm.expect(response.user).to.have.property('email');",
+                  "    pm.expect(response.user).to.have.property('role');",
+                  "    pm.expect(response.user).to.have.property('name');",
+                  "});",
+                  "",
+                  "pm.test(\"Rol de usuario es válido\", function () {",
+                  "    const response = pm.response.json();",
+                  "    const validRoles = ['admin', 'doctor', 'nurse'];",
+                  "    pm.expect(validRoles).to.include(response.user.role);",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta < 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@healthtech.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/auth/login",
+              "host": ["{{apiUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Autentica usuario y obtiene token JWT (se guarda automáticamente)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Register Critical Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Guardar ID del paciente para uso posterior",
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set(\"lastPatientId\", response.id);",
+                  "    console.log(\"✅ Paciente crítico registrado:\", response.name);",
+                  "    console.log(\"Prioridad:\", response.priority);",
+                  "}",
+                  "",
+                  "// TEST 2: Validación completa de registro de paciente y triage",
+                  "pm.test(\"Paciente registrado exitosamente - Status 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Prioridad calculada correctamente\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('priority');",
+                  "    pm.expect(response.priority).to.be.a('number');",
+                  "    pm.expect(response.priority).to.be.within(1, 5);",
+                  "});",
+                  "",
+                  "pm.test(\"Paciente crítico tiene prioridad 1 o 2\", function () {",
+                  "    const response = pm.response.json();",
+                  "    // FC > 140 y SpO2 < 90 deben generar prioridad crítica",
+                  "    pm.expect(response.priority).to.be.at.most(2);",
+                  "    console.log('✅ Prioridad asignada:', response.priority);",
+                  "});",
+                  "",
+                  "pm.test(\"Paciente tiene todos los campos requeridos\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('id');",
+                  "    pm.expect(response).to.have.property('name');",
+                  "    pm.expect(response).to.have.property('age');",
+                  "    pm.expect(response).to.have.property('status');",
+                  "    pm.expect(response).to.have.property('vitals');",
+                  "});",
+                  "",
+                  "pm.test(\"Signos vitales guardados correctamente\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.vitals).to.have.property('heartRate');",
+                  "    pm.expect(response.vitals).to.have.property('oxygenSaturation');",
+                  "    pm.expect(response.vitals).to.have.property('temperature');",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta < 2000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"María López García\",\n  \"age\": 58,\n  \"gender\": \"female\",\n  \"symptoms\": [\"severe chest pain\", \"difficulty breathing\", \"cold sweating\"],\n  \"vitals\": {\n    \"heartRate\": 145,\n    \"bloodPressure\": \"180/110\",\n    \"temperature\": 38.5,\n    \"oxygenSaturation\": 85\n  }\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/patients",
+              "host": ["{{apiUrl}}"],
+              "path": ["patients"]
+            },
+            "description": "Registra un paciente con signos vitales críticos (FC > 140, SpO2 < 90)"
+          },
+          "response": []
+        },
+        {
+          "name": "Register Stable Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log(\"✅ Paciente estable registrado:\", response.name);",
+                  "    console.log(\"Prioridad:\", response.priority);",
+                  "}",
+                  "",
+                  "pm.test(\"Paciente registrado exitosamente\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Carlos Pérez Ramírez\",\n  \"age\": 28,\n  \"gender\": \"male\",\n  \"symptoms\": [\"mild headache\", \"fatigue\"],\n  \"vitals\": {\n    \"heartRate\": 75,\n    \"bloodPressure\": \"120/80\",\n    \"temperature\": 36.8,\n    \"oxygenSaturation\": 98\n  }\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/patients",
+              "host": ["{{apiUrl}}"],
+              "path": ["patients"]
+            },
+            "description": "Registra un paciente con signos vitales normales"
+          },
+          "response": []
+        },
+        {
+          "name": "List All Patients",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// TEST 3: Validación de listado de pacientes",
+                  "pm.test(\"Status code es 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta es un array o Result<Array>\", function () {",
+                  "    const response = pm.response.json();",
+                  "    let patients;",
+                  "    ",
+                  "    if (response._value) {",
+                  "        patients = response._value;",
+                  "        pm.expect(patients).to.be.an('array');",
+                  "        console.log('✅ Result Pattern detectado');",
+                  "    } else if (Array.isArray(response)) {",
+                  "        patients = response;",
+                  "    } else {",
+                  "        throw new Error('Formato de respuesta no reconocido');",
+                  "    }",
+                  "    console.log('✅ ' + patients.length + ' pacientes encontrados');",
+                  "});",
+                  "",
+                  "pm.test(\"Pacientes tienen estructura correcta\", function () {",
+                  "    const response = pm.response.json();",
+                  "    const patients = response._value || response;",
+                  "    ",
+                  "    if (patients.length > 0) {",
+                  "        const patient = patients[0];",
+                  "        pm.expect(patient).to.be.an('object');",
+                  "        console.log('📝 Propiedades del paciente:', Object.keys(patient).join(', '));",
+                  "        ",
+                  "        // Validación flexible: al menos debe tener id",
+                  "        const hasId = patient.hasOwnProperty('id') || patient.hasOwnProperty('_id');",
+                  "        pm.expect(hasId, 'Paciente debe tener id').to.be.true;",
+                  "    } else {",
+                  "        console.log('⚠️ Array vacío, no se puede validar estructura');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Pacientes ordenados por prioridad\", function () {",
+                  "    const response = pm.response.json();",
+                  "    const patients = response._value || response;",
+                  "    ",
+                  "    if (patients.length > 1) {",
+                  "        // Verificar si tienen propiedad priority",
+                  "        if (patients[0].priority !== undefined) {",
+                  "            let ordenado = true;",
+                  "            for (let i = 0; i < patients.length - 1; i++) {",
+                  "                if (patients[i].priority > patients[i + 1].priority) {",
+                  "                    ordenado = false;",
+                  "                    console.log('❌ Orden incorrecto en índice', i);",
+                  "                    break;",
+                  "                }",
+                  "            }",
+                  "            pm.expect(ordenado, 'Pacientes deben estar ordenados por prioridad').to.be.true;",
+                  "            if (ordenado) console.log('✅ Pacientes correctamente ordenados');",
+                  "        } else {",
+                  "            console.log('⚠️ Pacientes no tienen propiedad priority - Test omitido');",
+                  "            // Test pasa automáticamente si no hay prioridad",
+                  "            pm.expect(true).to.be.true;",
+                  "        }",
+                  "    } else {",
+                  "        console.log('⚠️ Menos de 2 pacientes - Test omitido');",
+                  "        pm.expect(true).to.be.true;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta < 500ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(500);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/patients",
+              "host": ["{{apiUrl}}"],
+              "path": ["patients"]
+            },
+            "description": "Obtiene la lista completa de pacientes registrados, ordenados por prioridad"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Patient by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/patients/{{lastPatientId}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["patients", "{{lastPatientId}}"]
+            },
+            "description": "Obtiene detalles de un paciente específico (usa el ID del último paciente creado)"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Comment to Patient",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Paciente presenta mejoría. Se recomienda observación por 4 horas.\",\n  \"authorId\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/patients/{{lastPatientId}}/comments",
+              "host": ["{{apiUrl}}"],
+              "path": ["patients", "{{lastPatientId}}", "comments"]
+            },
+            "description": "Agrega un comentario médico al paciente"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Doctor to Patient",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"doctor-id-aqui\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/patients/{{lastPatientId}}/assign-doctor",
+              "host": ["{{apiUrl}}"],
+              "path": ["patients", "{{lastPatientId}}", "assign-doctor"]
+            },
+            "description": "Asigna un doctor a un paciente específico"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "apiUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    }
+  ]
+}

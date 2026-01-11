@@ -1,0 +1,238 @@
+# ====================================================================
+# Docker Compose Configuration - HealthTech Triage System
+# ====================================================================
+# Este archivo orquesta los servicios necesarios para el sistema
+# de triaje en tiempo real:
+# - Frontend: React + Vite + Tailwind (Nginx)
+# - App: Aplicación Node.js con WebSockets
+# - RabbitMQ: Broker de mensajería para notificaciones asíncronas
+# - PostgreSQL: Base de datos relacional para persistencia
+#
+# HUMAN REVIEW: La IA sugirió una configuración básica. Refactoricé para
+# incluir Healthchecks y redes aisladas para garantizar que la aplicación
+# no intente conectarse a RabbitMQ antes de que el broker acepte conexiones,
+# evitando fallos en el arranque.
+# ====================================================================
+
+services:
+  # ==================================================================
+  # SERVICIO 1: PostgreSQL Database
+  # ==================================================================
+  # Base de datos relacional para almacenar:
+  # - Pacientes y sus datos vitales
+  # - Historial de triaje
+  # - Auditoría de eventos
+  # ==================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: healthtech-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: healthtech
+      POSTGRES_PASSWORD: healthtech2026
+      POSTGRES_DB: healthtech_triage
+      # Configuración para performance
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistencia de datos
+      - postgres_data:/var/lib/postgresql/data
+      # Scripts de inicialización (opcional)
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthtech -d healthtech_triage"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - healthtech-network
+
+  # ==================================================================
+  # SERVICIO 2: RabbitMQ Message Broker
+  # ==================================================================
+  # Broker de mensajería para:
+  # - Cola triage_high_priority (niveles 1 y 2)
+  # - Notificaciones asíncronas a médicos
+  # - Desacoplamiento entre módulos del sistema
+  # 
+  # Plugin Management UI disponible en: http://localhost:15672
+  # Usuario: admin / Password: admin2026
+  # ==================================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: healthtech-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin2026
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"    # Puerto AMQP
+      - "15672:15672"  # Management UI
+    volumes:
+      # Persistencia de colas y mensajes
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_logs:/var/log/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - healthtech-network
+
+  # ==================================================================
+  # SERVICIO 3: HealthTech Application (Node.js)
+  # ==================================================================
+  # Aplicación principal con:
+  # - API REST para operaciones CRUD
+  # - WebSocket Server para notificaciones en tiempo real
+  # - Consumidor de colas RabbitMQ
+  # - Lógica de triaje y cálculo de prioridad
+  # ==================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_VERSION: 20.19.5
+    container_name: healthtech-app
+    restart: unless-stopped
+    environment:
+      # Node environment
+      NODE_ENV: production
+      PORT: 3000
+      
+      # Database connection
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: healthtech_triage
+      DB_USER: healthtech
+      DB_PASSWORD: healthtech2026
+      
+      # RabbitMQ connection
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: admin
+      RABBITMQ_PASSWORD: admin2026
+      RABBITMQ_VHOST: /
+      
+      # WebSocket configuration
+      WEBSOCKET_PORT: 3001
+      CORS_ORIGIN: "*"
+      
+      # JWT Authentication
+      JWT_SECRET: healthtech-dev-secret-key-2026
+      
+      # Logging
+      LOG_LEVEL: info
+    ports:
+      - "3000:3000"  # API REST
+      - "3001:3001"  # WebSocket Server
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      # HUMAN REVIEW: En desarrollo, montar src/ para hot reload
+      # - ./src:/app/src
+      - app_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - healthtech-network
+
+  # ==================================================================
+  # SERVICIO 4: Frontend (React + Nginx - Producción)
+  # ==================================================================
+  # Aplicación frontend con:
+  # - React 18 para UI interactiva
+  # - Tailwind CSS para diseño moderno
+  # - WebSocket client para actualizaciones en tiempo real
+  # - Nginx para servir archivos estáticos (producción)
+  # 
+  # HUMAN REVIEW: Refactoricé para usar Nginx en producción en lugar
+  # de Vite dev server. Nginx es más eficiente y seguro para producción.
+  # ==================================================================
+  frontend:
+    build:
+      context: ./frontend-new
+      dockerfile: Dockerfile
+      target: production
+    container_name: healthtech-frontend
+    restart: unless-stopped
+    ports:
+      - "3003:80"  # Nginx HTTP (puerto 3003 en host, 80 en contenedor)
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - healthtech-network
+
+# ====================================================================
+# VOLUMES: Persistencia de datos
+# ====================================================================
+volumes:
+  postgres_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  rabbitmq_logs:
+    driver: local
+  app_logs:
+    driver: local
+
+# ====================================================================
+# NETWORKS: Red interna para comunicación entre servicios
+# ====================================================================
+networks:
+  healthtech-network:
+    driver: bridge
+    name: healthtech-network
+
+# ====================================================================
+# COMANDOS ÚTILES
+# ====================================================================
+# Iniciar todos los servicios:
+#   docker-compose up -d
+#
+# Ver logs de la aplicación:
+#   docker-compose logs -f app
+#   docker-compose logs -f frontend
+#
+# Reiniciar solo la app (después de cambios):
+#   docker-compose restart app
+#
+# Rebuild del frontend:
+#   docker-compose build frontend --no-cache
+#   docker-compose up -d frontend
+#
+# Acceder a la base de datos:
+#   docker-compose exec postgres psql -U healthtech -d healthtech_triage
+#
+# Acceder a RabbitMQ Management:
+#   http://localhost:15672 (admin / admin2026)
+#
+# Acceder a la aplicación:
+#   Frontend: http://localhost:3003
+#   API Backend: http://localhost:3000
+#   WebSocket: ws://localhost:3000
+#
+# Detener y eliminar contenedores:
+#   docker-compose down
+#
+# Eliminar también los volúmenes (⚠️ borra datos):
+#   docker-compose down -v
+# ====================================================================
