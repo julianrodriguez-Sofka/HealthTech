@@ -58,6 +58,8 @@ module.exports = {
     'src/domain/TriageEngine.ts',
     'src/domain/observers/TriageEventBus.ts',
     'src/domain/observers/TriageEvents.ts',
+    // Domain layer - errors (testeados)
+    'src/domain/errors/VitalsErrors.ts',
     // Application layer - observers (testeados)
     'src/application/observers/AuditObserver.ts',
     'src/application/observers/DoctorNotificationObserver.ts',
