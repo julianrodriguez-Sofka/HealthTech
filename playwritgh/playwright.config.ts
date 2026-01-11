@@ -5,8 +5,10 @@ import { defineConfig, devices } from '@playwright/test';
  * 
  * Configuration for E2E tests using Playwright with Page Object Model pattern.
  * 
- * HUMAN REVIEW: This configuration ensures proper test execution with Chrome
- * and follows best practices for Playwright E2E testing.
+ * CONFIGURACIÓN PARA CAPTURAR EVIDENCIA VISUAL:
+ * - Screenshots de cada paso
+ * - Videos de todos los tests
+ * - Traces para debugging
  */
 
 export default defineConfig({
@@ -14,50 +16,56 @@ export default defineConfig({
   testDir: './tests',
 
   // Maximum time one test can run for
-  timeout: 120 * 1000, // 120 seconds - aumentado para dar más tiempo a la aplicación
+  timeout: 120 * 1000, // 120 seconds
 
   // Test execution configuration
   fullyParallel: false, // Run tests serially to avoid conflicts
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1, // Permitir 1 retry en desarrollo
+  retries: process.env.CI ? 2 : 0, // Sin retries en desarrollo para ver videos limpios
   workers: 1, // Run one test at a time
 
-  // Reporter configuration
+  // Reporter configuration - HTML report con videos e imágenes
   reporter: [
-    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['html', { 
+      outputFolder: 'playwright-report', 
+      open: 'never' // Abriremos manualmente
+    }],
     ['list'],
     ['json', { outputFile: 'test-results/results.json' }]
   ],
 
+  // Output folder for test artifacts (videos, screenshots, traces)
+  outputDir: 'test-results',
+
   // Shared settings for all projects
   use: {
     // Base URL for tests - El frontend corre en el puerto 3003 en Docker
-    // http://localhost:3003 es el frontend en desarrollo
     baseURL: process.env.BASE_URL || 'http://localhost:3003',
     
     // Browser context options
     viewport: { width: 1920, height: 1080 },
     
-    // Action timeout - aumentado para dar más tiempo a las acciones
+    // Action timeout
     actionTimeout: 30 * 1000,
     
-    // Navigation timeout - aumentado para dar tiempo a cargar
+    // Navigation timeout
     navigationTimeout: 90 * 1000,
     
-    // Screenshot on failure
-    screenshot: 'only-on-failure',
+    // ========================================
+    // EVIDENCIA VISUAL - SIEMPRE CAPTURAR
+    // ========================================
     
-    // Video on failure
-    video: 'retain-on-failure',
+    // Screenshot: 'on' captura screenshot de cada paso
+    screenshot: 'on',
     
-    // Trace on failure
-    trace: 'retain-on-failure',
+    // Video: 'on' graba video de TODOS los tests
+    video: 'on',
+    
+    // Trace: 'on' genera trace con timeline interactivo
+    trace: 'on',
     
     // Ignore HTTPS errors si es necesario
     ignoreHTTPSErrors: true,
-    
-    // Retry failed actions
-    retry: 2,
   },
 
   // Configure projects for major browsers
