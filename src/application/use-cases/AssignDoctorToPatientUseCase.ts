@@ -61,13 +61,13 @@ export class AssignDoctorToPatientUseCase {
       // CRÍTICO: El doctorId viene del frontend como el user.id del usuario logueado
       // Necesitamos buscar en doctorRepository usando el mismo ID
       let doctor = await this.doctorRepository.findById(dto.doctorId);
-      
+
       // HUMAN REVIEW: Si no se encuentra por ID directo, intentar buscar por userId
       // Esto maneja el caso donde el doctor se guardó con un ID diferente pero es el mismo User
       if (!doctor && this.doctorRepository.findByUserId) {
         doctor = await this.doctorRepository.findByUserId(dto.doctorId);
       }
-      
+
       if (!doctor) {
         return {
           success: false,
@@ -78,7 +78,7 @@ export class AssignDoctorToPatientUseCase {
       // HUMAN REVIEW: Permitir reasignación según HU.md US-007
       // Si el paciente ya está asignado, permitir reasignación si es a un médico diferente
       const isReassignment = patient.isAssigned() && patient.assignedDoctorId !== dto.doctorId;
-      
+
       if (patient.isAssigned() && !isReassignment) {
         // Paciente ya asignado al mismo médico
         return {

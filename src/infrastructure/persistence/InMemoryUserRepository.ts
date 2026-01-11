@@ -39,7 +39,7 @@ export class InMemoryUserRepository implements IUserRepository {
     // HUMAN REVIEW: Normalizar email a lowercase para búsqueda case-insensitive
     // Esto asegura que el email se busque de la misma forma que se guarda
     const normalizedEmail = email.toLowerCase().trim();
-    
+
     for (const user of this.users.values()) {
       // Comparar emails normalizados (case-insensitive)
       if (user.email.toLowerCase().trim() === normalizedEmail) {

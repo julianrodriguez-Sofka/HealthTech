@@ -438,20 +438,20 @@ class ExpressServer {
       const existingAdmin = await this.userRepository.findByEmail('admin@healthtech.com');
       const existingDoctor = await this.userRepository.findByEmail('carlos.mendoza@healthtech.com');
       const existingNurse = await this.userRepository.findByEmail('ana.garcia@healthtech.com');
-      
+
       // Verificar si el doctor existe en doctorRepository (no solo en userRepository)
       let doctorExistsInDoctorRepo = false;
       if (existingDoctor) {
         const doctorInRepo = await this.doctorRepository.findById(existingDoctor.id);
         doctorExistsInDoctorRepo = doctorInRepo !== null;
       }
-      
+
       // Si todos los usuarios existen Y el doctor está en doctorRepository, saltar seeding
       if (existingAdmin && existingDoctor && existingNurse && doctorExistsInDoctorRepo) {
         console.log('⏭️  Test users already seeded correctly - skipping');
         return;
       }
-      
+
       // HUMAN REVIEW: Si faltan usuarios o el doctor no está en doctorRepository, limpiar y recrear
       // Esto asegura que los doctores se creen correctamente como entidades Doctor
       console.log('🔄 Re-seeding test users with correct entity types...');
@@ -461,12 +461,14 @@ class ExpressServer {
         await this.userRepository.delete(user.id);
       }
       // Limpiar doctores
-      if ('clear' in this.doctorRepository && typeof (this.doctorRepository as any).clear === 'function') {
-        (this.doctorRepository as any).clear();
+      const doctorRepoWithClear = this.doctorRepository as unknown as { clear?: () => void };
+      if (typeof doctorRepoWithClear.clear === 'function') {
+        doctorRepoWithClear.clear();
       }
       // Limpiar también password hashes
-      if ('clear' in this.userRepository && typeof (this.userRepository as any).clear === 'function') {
-        (this.userRepository as any).clear();
+      const userRepoWithClear = this.userRepository as unknown as { clear?: () => void };
+      if (typeof userRepoWithClear.clear === 'function') {
+        userRepoWithClear.clear();
       }
 
       // HUMAN REVIEW: Crear usuarios de prueba con contraseñas hasheadas
@@ -514,7 +516,7 @@ class ExpressServer {
         // CRÍTICO: Los doctores deben crearse como Doctor, no como User genérico
         // porque AssignDoctorToPatientUseCase busca en doctorRepository, no en userRepository
         let user: User;
-        
+
         if (userData.role === 'doctor') {
           // Crear Doctor con especialidad y licencia
           const doctor = Doctor.createDoctor({
@@ -526,13 +528,13 @@ class ExpressServer {
             isAvailable: true,
             maxPatientLoad: 10
           });
-          
+
           // Guardar en ambos repositorios: userRepository (para login) y doctorRepository (para asignación)
           await this.userRepository.save(doctor);
           await this.doctorRepository.save(doctor);
-          
+
           user = doctor;
-          console.log(`  ✓ Doctor entity created and saved in both repositories`);
+          console.log('  ✓ Doctor entity created and saved in both repositories');
         } else if (userData.role === 'nurse') {
           // Crear Nurse con área y turno
           const nurse = Nurse.createNurse({
@@ -543,10 +545,10 @@ class ExpressServer {
             shift: 'morning',
             licenseNumber: `LIC-${Date.now()}-${Math.random().toString(36).substring(7)}`
           });
-          
+
           await this.userRepository.save(nurse);
           user = nurse;
-          console.log(`  ✓ Nurse entity created and saved`);
+          console.log('  ✓ Nurse entity created and saved');
         } else {
           // Crear User genérico para admin
           user = User.create({
@@ -555,13 +557,13 @@ class ExpressServer {
             role: UserRole.ADMIN,
             status: UserStatus.ACTIVE
           });
-          
+
           await this.userRepository.save(user);
         }
 
         // Save password hash - CRÍTICO para que el login funcione
         // HUMAN REVIEW: El repositorio InMemory implementa savePasswordHash, debe llamarse siempre
-        if ('savePasswordHash' in this.userRepository && 
+        if ('savePasswordHash' in this.userRepository &&
             typeof this.userRepository.savePasswordHash === 'function') {
           await this.userRepository.savePasswordHash(user.id, passwordHash);
           console.log(`  ✓ Password hash saved for ${userData.email}`);
@@ -645,18 +647,18 @@ class ExpressServer {
       // REQUISITO HU.md: Notificaciones en tiempo real a médicos (<3 segundos)
       if (this.rabbitMQ && this.wsServer) {
         const triageQueueManager = new TriageQueueManager(this.rabbitMQ);
-        
+
         // Inicializar colas de RabbitMQ (idempotente - no falla si ya existen)
         await triageQueueManager.initializeQueues();
-        
+
         // Consumir mensajes de alta prioridad y emitirlos vía WebSocket
         await triageQueueManager.consumeHighPriorityQueue(async (notification) => {
           console.log(`[RabbitMQ→WebSocket] 🚨 High priority notification received: Patient ${notification.patientId}, Priority ${notification.priorityLevel}`);
-          
+
           // Emitir a todos los clientes WebSocket conectados
           this.wsServer!.emitHighPriorityAlert(notification);
         });
-        
+
         console.log('✅ RabbitMQ → WebSocket bridge initialized (high priority queue consumer active)');
       }
 

@@ -100,7 +100,7 @@ export class RegisterPatientUseCase {
       // HUMAN REVIEW: REQUISITO HU.md US-003 - El enfermero puede asignar prioridad manualmente
       // Si se proporciona manualPriority, usarlo; de lo contrario calcular automáticamente
       let priority: PatientPriority;
-      
+
       if (input.manualPriority !== undefined && input.manualPriority >= 1 && input.manualPriority <= 5) {
         // Prioridad asignada manualmente por enfermero
         priority = input.manualPriority as PatientPriority;
@@ -115,7 +115,7 @@ export class RegisterPatientUseCase {
           temperature: input.vitals.temperature,
           oxygenSaturation: input.vitals.oxygenSaturation,
         });
-        
+
         this.logger.info('Triage priority calculated automatically', {
           priority,
           heartRate: input.vitals.heartRate,
@@ -170,7 +170,7 @@ export class RegisterPatientUseCase {
         createdAt: now,
         updatedAt: now
       });
-      
+
       // Guardar entidad Patient completa
       await this.patientRepository.saveEntity(patientEntity);
 

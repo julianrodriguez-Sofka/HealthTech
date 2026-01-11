@@ -263,7 +263,7 @@ export class UserRoutes {
 
       // HUMAN REVIEW: Actualizar campos usando métodos de la entidad (encapsulación)
       // Esto respeta los principios de DDD y evita modificar propiedades readonly directamente
-      
+
       if (name && name.trim() !== user.name) {
         try {
           user.updateName(name);
@@ -279,7 +279,7 @@ export class UserRoutes {
       if (email && email.trim() !== user.email) {
         // Normalizar email antes de verificar
         const normalizedEmail = email.toLowerCase().trim();
-        
+
         // Verificar que el email no esté en uso por otro usuario
         const existingUser = await this.userRepository.findByEmail(normalizedEmail);
         if (existingUser && existingUser.id !== id) {
@@ -289,7 +289,7 @@ export class UserRoutes {
           });
           return;
         }
-        
+
         try {
           user.updateEmail(normalizedEmail);
         } catch (error) {

@@ -40,7 +40,7 @@ export class PatientManagementRoutes {
   private configureRoutes(): void {
     // HUMAN REVIEW: Orden crítico - rutas específicas primero, genéricas al final
     // Esto evita que /:id capture rutas como /:id/assign-doctor
-    
+
     // Rutas específicas con sub-rutas (deben ir ANTES de /:id)
     // Asignar doctor a paciente (POST para acciones según RESTful best practices)
     this.router.post('/:id/assign-doctor', this.assignDoctor.bind(this));
@@ -64,7 +64,7 @@ export class PatientManagementRoutes {
   /**
    * POST /api/v1/patients/:id/assign-doctor
    * Asignar médico a paciente
-   * 
+   *
    * HUMAN REVIEW: Endpoint para tomar un caso según HU.md US-005
    * "Un Médico selecciona un paciente de la lista para tomar su caso"
    * "Una vez que el Médico toma el caso, este se marca como 'en atención'"
@@ -116,7 +116,7 @@ export class PatientManagementRoutes {
       }
 
       const patientJson = updatedPatient.toJSON();
-      
+
       // HUMAN REVIEW: Mapear Patient entity al formato esperado por el frontend
       const mappedPatient = {
         id: patientJson.id,
@@ -404,9 +404,9 @@ export class PatientManagementRoutes {
           result.error.includes('connection') ||
           result.error.includes('network')
         );
-        
+
         const statusCode = isInfrastructureError ? 500 : 400;
-        
+
         res.status(statusCode).json({
           success: false,
           error: result.error

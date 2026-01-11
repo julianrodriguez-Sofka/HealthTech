@@ -51,7 +51,7 @@ export class PatientRoutes {
     // HUMAN REVIEW: Orden crítico - rutas específicas primero, genéricas al final
     // Esto evita que /:id capture rutas como /:id/assign-doctor o /:id/comments
     // IMPORTANTE: Registrar TODAS las rutas, la validación de repositorios se hace dentro de los métodos
-    
+
     // Listar pacientes (ruta raíz)
     this.router.get('/', this.listPatients.bind(this));
 
@@ -100,7 +100,7 @@ export class PatientRoutes {
   /**
    * GET /api/v1/patients
    * Listar todos los pacientes
-   * 
+   *
    * HUMAN REVIEW: Este endpoint combina datos de Patient entities y PatientData (legacy)
    * para retornar pacientes completos con sus signos vitales y prioridad.
    * Prioriza entidades Patient completas, pero también incluye PatientData para compatibilidad.
@@ -110,25 +110,34 @@ export class PatientRoutes {
       // HUMAN REVIEW: Obtener ambos tipos de datos para asegurar que todos los pacientes se retornen
       const patientEntities = await this.patientRepository.findAllEntities();
       const patientsResult = await this.patientRepository.findAll();
-      
+
       // Crear un Set para evitar duplicados por ID
       const processedIds = new Set<string>();
-      const allPatients: any[] = [];
+      interface PatientResponse {
+        id: string;
+        name: string;
+        age: number;
+        priority: number;
+        status: string;
+        arrivalTime?: string | Date;
+        [key: string]: unknown;
+      }
+      const allPatients: PatientResponse[] = [];
 
       // HUMAN REVIEW: Procesar entidades Patient primero (tienen información completa)
-      if (patientEntities.length > 0) {
+      if (patientEntities && patientEntities.length > 0) {
         const mappedEntities = await Promise.all(
           patientEntities.map(async (patient) => {
             processedIds.add(patient.id);
-            
+
             // Obtener vitals más recientes del paciente
             const vitalsResult = await this.vitalsRepository.findLatest(patient.id);
-            const latestVitals = vitalsResult.isSuccess && vitalsResult.value 
-              ? vitalsResult.value 
+            const latestVitals = vitalsResult.isSuccess && vitalsResult.value
+              ? vitalsResult.value
               : null;
 
             const patientJson = patient.toJSON();
-            
+
             // HUMAN REVIEW: Mapear Patient entity al formato esperado por el frontend
             return {
               id: patientJson.id, // CRÍTICO: Incluir ID siempre
@@ -158,21 +167,21 @@ export class PatientRoutes {
             };
           })
         );
-        
+
         allPatients.push(...mappedEntities);
       }
 
       // HUMAN REVIEW: Procesar PatientData (legacy) solo si no fueron procesados como entidades
       if (patientsResult.isSuccess && patientsResult.value) {
         const legacyPatients = patientsResult.value.filter(p => !processedIds.has(p.id));
-        
+
         if (legacyPatients.length > 0) {
           const mappedLegacy = await Promise.all(
             legacyPatients.map(async (patient) => {
               // Obtener vitals más recientes del paciente
               const vitalsResult = await this.vitalsRepository.findLatest(patient.id);
-              const latestVitals = vitalsResult.isSuccess && vitalsResult.value 
-                ? vitalsResult.value 
+              const latestVitals = vitalsResult.isSuccess && vitalsResult.value
+                ? vitalsResult.value
                 : null;
 
               // HUMAN REVIEW: Mapear PatientData al formato esperado por el frontend
@@ -202,15 +211,15 @@ export class PatientRoutes {
               };
             })
           );
-          
+
           allPatients.push(...mappedLegacy);
         }
       }
 
       // HUMAN REVIEW: Ordenar por fecha de llegada (más recientes primero)
       allPatients.sort((a, b) => {
-        const dateA = new Date(a.arrivalTime).getTime();
-        const dateB = new Date(b.arrivalTime).getTime();
+        const dateA = a.arrivalTime ? new Date(a.arrivalTime).getTime() : 0;
+        const dateB = b.arrivalTime ? new Date(b.arrivalTime).getTime() : 0;
         return dateB - dateA;
       });
 
@@ -290,7 +299,7 @@ export class PatientRoutes {
       // HUMAN REVIEW: Si se envía manualPriority, usarlo; de lo contrario calcular automáticamente
       // REQUISITO HU.md US-003: "El sistema o el Enfermero asigna un nivel de prioridad"
       const manualPriority = req.body.manualPriority || req.body.priority;
-      
+
       // Ejecutar el caso de uso
       const result = await useCase.execute({
         firstName,
@@ -574,7 +583,7 @@ export class PatientRoutes {
   /**
    * POST /api/v1/patients/:id/assign-doctor
    * Asignar médico a paciente
-   * 
+   *
    * HUMAN REVIEW: Endpoint para tomar un caso según HU.md US-005
    * "Un Médico selecciona un paciente de la lista para tomar su caso"
    * "Una vez que el Médico toma el caso, este se marca como 'en atención'"
@@ -587,7 +596,7 @@ export class PatientRoutes {
 
     try {
       const { id } = req.params;
-      const { doctorId, comment } = req.body as AssignDoctorBody;
+      const { doctorId, comment } = req.body;
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Patient ID is required' });
@@ -616,7 +625,7 @@ export class PatientRoutes {
             this.patientCommentRepository,
             this.userRepository
           );
-          
+
           await addCommentUseCase.execute({
             patientId: id,
             authorId: doctorId,
@@ -844,7 +853,7 @@ export class PatientRoutes {
         return;
       }
 
-      const priorityNum = typeof priority === 'string' ? parseInt(priority, 10) : priority;
+      const priorityNum = typeof priority === 'string' ? parseInt(priority, 10) : Number(priority);
       if (isNaN(priorityNum) || priorityNum < 1 || priorityNum > 5) {
         res.status(400).json({ success: false, error: 'Priority debe ser un número entre 1 y 5' });
         return;
@@ -856,7 +865,7 @@ export class PatientRoutes {
         return;
       }
 
-      patient.setManualPriority(priorityNum);
+      patient.setManualPriority(priorityNum as 1 | 2 | 3 | 4 | 5);
       await this.patientRepository.saveEntity(patient);
 
       res.status(200).json({
@@ -879,7 +888,7 @@ export class PatientRoutes {
   private async updateProcess(req: Request<{ id: string }, Record<string, never>, UpdateProcessBody>, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { process, processDetails } = req.body as UpdateProcessBody;
+      const { process, processDetails } = req.body;
 
       if (!id) {
         res.status(400).json({ success: false, error: 'Patient ID is required' });
@@ -894,9 +903,9 @@ export class PatientRoutes {
       // HUMAN REVIEW: Validar que el proceso sea válido según PatientProcess enum
       const validProcesses = Object.values(PatientProcess);
       if (!validProcesses.includes(process as PatientProcess)) {
-        res.status(400).json({ 
-          success: false, 
-          error: `process inválido. Debe ser uno de: ${validProcesses.join(', ')}` 
+        res.status(400).json({
+          success: false,
+          error: `process inválido. Debe ser uno de: ${validProcesses.join(', ')}`
         });
         return;
       }
@@ -909,14 +918,14 @@ export class PatientRoutes {
 
       // HUMAN REVIEW: Convertir string a enum PatientProcess
       const processEnum = process as PatientProcess;
-      
+
       // HUMAN REVIEW: Si el proceso es 'none', limpiar proceso; de lo contrario, asignarlo
       if (processEnum === PatientProcess.NONE) {
         patient.clearProcess();
       } else {
         patient.setProcess(processEnum, processDetails || undefined);
       }
-      
+
       await this.patientRepository.saveEntity(patient);
 
       const patientJson = patient.toJSON();
