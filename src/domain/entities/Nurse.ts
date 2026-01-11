@@ -5,6 +5,7 @@
  * Mantiene área de trabajo y turnos.
  */
 
+import { randomUUID } from 'crypto';
 import { User, UserProps, UserRole, UserStatus } from './User';
 
 export enum NurseArea {
@@ -43,7 +44,8 @@ export class Nurse extends User {
    * Factory method para crear enfermero
    */
   static createNurse(params: Omit<NurseProps, 'id' | 'createdAt' | 'updatedAt' | 'role'>): Nurse {
-    const id = `nurse-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // SECURITY: Using crypto.randomUUID() instead of Math.random()
+    const id = `nurse-${Date.now()}-${randomUUID().substring(0, 8)}`;
     const now = new Date();
 
     const userProps: UserProps = {

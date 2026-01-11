@@ -7,6 +7,8 @@
  * HUMAN REVIEW: Passwords deben ser hasheados antes de persistir (en infrastructure)
  */
 
+import { randomUUID } from 'crypto';
+
 export enum UserRole {
   ADMIN = 'admin',
   DOCTOR = 'doctor',
@@ -47,7 +49,8 @@ export class User {
    * HUMAN REVIEW: Validar email format con regex más robusto si es necesario
    */
   static create(params: Omit<UserProps, 'id' | 'createdAt' | 'updatedAt'>): User {
-    const id = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // SECURITY: Using crypto.randomUUID() instead of Math.random()
+    const id = `user-${Date.now()}-${randomUUID().substring(0, 8)}`;
     const now = new Date();
 
     return new User({

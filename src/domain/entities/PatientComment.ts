@@ -7,6 +7,8 @@
  * HUMAN REVIEW: Considerar versionado de comentarios para auditoría
  */
 
+import { randomUUID } from 'crypto';
+
 export enum CommentType {
   OBSERVATION = 'observation',
   DIAGNOSIS = 'diagnosis',
@@ -45,7 +47,8 @@ export class PatientComment {
    * Factory method para crear comentario
    */
   static create(params: Omit<PatientCommentProps, 'id' | 'createdAt' | 'isEdited'>): PatientComment {
-    const id = `comment-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // SECURITY: Using crypto.randomUUID() instead of Math.random()
+    const id = `comment-${Date.now()}-${randomUUID().substring(0, 8)}`;
 
     return new PatientComment({
       ...params,

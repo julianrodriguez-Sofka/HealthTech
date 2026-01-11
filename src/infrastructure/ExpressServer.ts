@@ -7,6 +7,7 @@
  * con documentación automática de API usando Swagger UI.
  */
 
+import { randomUUID } from 'crypto';
 import express, { Request, Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { createServer, Server as HTTPServer } from 'http';
@@ -524,7 +525,7 @@ class ExpressServer {
             name: userData.name,
             status: UserStatus.ACTIVE,
             specialty: MedicalSpecialty.EMERGENCY_MEDICINE, // Especialidad por defecto para triage
-            licenseNumber: `LIC-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+            licenseNumber: `LIC-${Date.now()}-${randomUUID().substring(0, 8)}`,
             isAvailable: true,
             maxPatientLoad: 10
           });
@@ -543,7 +544,7 @@ class ExpressServer {
             status: UserStatus.ACTIVE,
             area: NurseArea.TRIAGE, // Área por defecto para enfermeras de triage
             shift: 'morning',
-            licenseNumber: `LIC-${Date.now()}-${Math.random().toString(36).substring(7)}`
+            licenseNumber: `LIC-${Date.now()}-${randomUUID().substring(0, 8)}`
           });
 
           await this.userRepository.save(nurse);

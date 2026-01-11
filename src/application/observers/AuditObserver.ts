@@ -8,6 +8,7 @@
  * con regulaciones (HIPAA, GDPR). Cada acción debe ser trazable.
  */
 
+import { randomUUID } from 'crypto';
 import { IObserver } from '@domain/observers/IObserver';
 import { TriageEvent } from '@domain/observers/TriageEvents';
 import { IAuditRepository, AuditLogData } from '@domain/repositories/IAuditRepository';
@@ -34,7 +35,7 @@ export class AuditObserver implements IObserver<TriageEvent> {
   async update(event: TriageEvent): Promise<void> {
     try {
       const auditLog: AuditLogData = {
-        id: `audit-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        id: `audit-${Date.now()}-${randomUUID().substring(0, 8)}`,
         userId: this.extractUserId(event),
         action: event.eventType,
         patientId: event.patientId,

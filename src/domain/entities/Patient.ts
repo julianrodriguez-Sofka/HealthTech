@@ -7,6 +7,7 @@
  * HUMAN REVIEW: Validar rangos de signos vitales según estándares médicos
  */
 
+import { randomUUID } from 'crypto';
 import { PatientComment } from './PatientComment';
 
 export enum PatientPriority {
@@ -88,7 +89,8 @@ export class Patient {
    * Factory method para crear paciente
    */
   static create(params: Omit<PatientProps, 'id' | 'status' | 'comments' | 'createdAt' | 'updatedAt'>): Patient {
-    const id = `patient-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // SECURITY: Using crypto.randomUUID() instead of Math.random()
+    const id = `patient-${Date.now()}-${randomUUID().substring(0, 8)}`;
     const now = new Date();
 
     return new Patient({
