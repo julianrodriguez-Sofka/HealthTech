@@ -251,4 +251,153 @@ describe('AuditObserver', () => {
       );
     });
   });
+
+  describe('Audit save failure handling', () => {
+    it('debe loguear error cuando falla el guardado del audit log', async () => {
+      mockAuditRepository.save.mockResolvedValue(
+        Result.fail(new Error('Database connection failed'))
+      );
+
+      const event: TriageEvent = {
+        eventType: 'PATIENT_REGISTERED',
+        eventId: 'event-fail',
+        occurredAt: new Date(),
+        patientId: 'patient-fail',
+        patientName: 'Fail Patient',
+        priority: 3,
+        symptoms: [],
+        registeredBy: 'nurse-001',
+      } as any;
+
+      await observer.update(event);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to save audit log')
+      );
+    });
+
+    it('debe loguear error sin mensaje cuando error es undefined', async () => {
+      mockAuditRepository.save.mockResolvedValue(
+        Result.fail(undefined as any)
+      );
+
+      const event: TriageEvent = {
+        eventType: 'PATIENT_REGISTERED',
+        eventId: 'event-fail-2',
+        occurredAt: new Date(),
+        patientId: 'patient-fail-2',
+        patientName: 'Fail Patient 2',
+        priority: 3,
+        symptoms: [],
+        registeredBy: 'nurse-002',
+      } as any;
+
+      await observer.update(event);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Unknown')
+      );
+    });
+  });
+
+  describe('extractUserId coverage', () => {
+    it('debe extraer userId de evento PATIENT_DISCHARGED', async () => {
+      const event: TriageEvent = {
+        eventType: 'PATIENT_DISCHARGED',
+        eventId: 'event-discharge',
+        occurredAt: new Date(),
+        patientId: 'patient-discharge',
+        patientName: 'Discharge Patient',
+        dischargedBy: 'doctor-discharge',
+        dischargeNotes: 'Patient recovered',
+      } as any;
+
+      await observer.update(event);
+
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'doctor-discharge',
+        })
+      );
+    });
+
+    it('debe extraer userId de evento CASE_REASSIGNED', async () => {
+      const event: TriageEvent = {
+        eventType: 'CASE_REASSIGNED',
+        eventId: 'event-reassign',
+        occurredAt: new Date(),
+        patientId: 'patient-reassign',
+        patientName: 'Reassign Patient',
+        newDoctorId: 'doctor-new',
+        reason: 'Doctor unavailable',
+      } as any;
+
+      await observer.update(event);
+
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'doctor-new',
+        })
+      );
+    });
+
+    it('debe extraer userId de evento CRITICAL_VITALS_DETECTED con doctor asignado', async () => {
+      const event: TriageEvent = {
+        eventType: 'CRITICAL_VITALS_DETECTED',
+        eventId: 'event-critical',
+        occurredAt: new Date(),
+        patientId: 'patient-critical',
+        patientName: 'Critical Patient',
+        assignedDoctorId: 'doctor-critical',
+        heartRate: 150,
+        oxygenSaturation: 80,
+      } as any;
+
+      await observer.update(event);
+
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'doctor-critical',
+        })
+      );
+    });
+
+    it('debe usar SYSTEM como userId para CRITICAL_VITALS sin doctor', async () => {
+      const event: TriageEvent = {
+        eventType: 'CRITICAL_VITALS_DETECTED',
+        eventId: 'event-critical-no-doc',
+        occurredAt: new Date(),
+        patientId: 'patient-critical-2',
+        patientName: 'Critical Patient 2',
+        assignedDoctorId: undefined,
+        heartRate: 160,
+      } as any;
+
+      await observer.update(event);
+
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'SYSTEM',
+        })
+      );
+    });
+
+    it('debe usar SYSTEM como userId para eventos desconocidos', async () => {
+      const event: TriageEvent = {
+        eventType: 'UNKNOWN_EVENT_TYPE',
+        eventId: 'event-unknown',
+        occurredAt: new Date(),
+        patientId: 'patient-unknown',
+        patientName: 'Unknown Patient',
+      } as any;
+
+      await observer.update(event);
+
+      expect(mockAuditRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'SYSTEM',
+        })
+      );
+    });
+  });
 });

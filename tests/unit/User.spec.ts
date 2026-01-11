@@ -563,4 +563,156 @@ describe('User Entity - Domain', () => {
       expect(user.email).toBe(complexEmail);
     });
   });
+
+  describe('updateName()', () => {
+    it('debe actualizar el nombre correctamente', () => {
+      const user = User.create({
+        email: 'user@hospital.com',
+        name: 'Original Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      user.updateName('New Name');
+
+      expect(user.name).toBe('New Name');
+    });
+
+    it('debe actualizar updatedAt al cambiar nombre', () => {
+      const user = User.create({
+        email: 'user@hospital.com',
+        name: 'Original Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+      const originalUpdatedAt = user.updatedAt;
+
+      user.updateName('New Name');
+
+      expect(user.updatedAt.getTime()).toBeGreaterThanOrEqual(originalUpdatedAt.getTime());
+    });
+
+    it('debe lanzar error si el nombre tiene menos de 2 caracteres', () => {
+      const user = User.create({
+        email: 'user@hospital.com',
+        name: 'Original Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      expect(() => user.updateName('A')).toThrow('Name must be at least 2 characters');
+    });
+
+    it('debe lanzar error si el nombre está vacío', () => {
+      const user = User.create({
+        email: 'user@hospital.com',
+        name: 'Original Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      expect(() => user.updateName('')).toThrow('Name must be at least 2 characters');
+    });
+
+    it('debe lanzar error si el nombre tiene solo espacios', () => {
+      const user = User.create({
+        email: 'user@hospital.com',
+        name: 'Original Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      expect(() => user.updateName('   ')).toThrow('Name must be at least 2 characters');
+    });
+
+    it('debe hacer trim del nombre', () => {
+      const user = User.create({
+        email: 'user@hospital.com',
+        name: 'Original Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      user.updateName('  Trimmed Name  ');
+
+      expect(user.name).toBe('Trimmed Name');
+    });
+  });
+
+  describe('updateEmail()', () => {
+    it('debe actualizar el email correctamente', () => {
+      const user = User.create({
+        email: 'old@hospital.com',
+        name: 'User Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      user.updateEmail('new@hospital.com');
+
+      expect(user.email).toBe('new@hospital.com');
+    });
+
+    it('debe normalizar el email a lowercase', () => {
+      const user = User.create({
+        email: 'old@hospital.com',
+        name: 'User Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      user.updateEmail('NEW@HOSPITAL.COM');
+
+      expect(user.email).toBe('new@hospital.com');
+    });
+
+    it('debe hacer trim del email', () => {
+      const user = User.create({
+        email: 'old@hospital.com',
+        name: 'User Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      user.updateEmail('  new@hospital.com  ');
+
+      expect(user.email).toBe('new@hospital.com');
+    });
+
+    it('debe actualizar updatedAt al cambiar email', () => {
+      const user = User.create({
+        email: 'old@hospital.com',
+        name: 'User Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+      const originalUpdatedAt = user.updatedAt;
+
+      user.updateEmail('new@hospital.com');
+
+      expect(user.updatedAt.getTime()).toBeGreaterThanOrEqual(originalUpdatedAt.getTime());
+    });
+
+    it('debe lanzar error si el email no contiene @', () => {
+      const user = User.create({
+        email: 'old@hospital.com',
+        name: 'User Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      expect(() => user.updateEmail('invalidemail')).toThrow('Valid email is required');
+    });
+
+    it('debe lanzar error si el email está vacío', () => {
+      const user = User.create({
+        email: 'old@hospital.com',
+        name: 'User Name',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+      });
+
+      expect(() => user.updateEmail('')).toThrow('Valid email is required');
+    });
+  });
 });
