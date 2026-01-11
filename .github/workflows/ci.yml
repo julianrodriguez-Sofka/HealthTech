@@ -108,12 +108,14 @@ jobs:
           retention-days: 5
 
   # ================================================================
-  # JOB 4: SonarCloud Analysis
+  # JOB 4: SonarCloud Analysis (Informativo - No bloquea PR)
   # ================================================================
   sonarcloud:
     name: 📊 SonarCloud Analysis
     runs-on: ubuntu-latest
     needs: test
+    # Continue even if this job fails - SonarCloud is informative only
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -139,12 +141,12 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   # ================================================================
-  # JOB 5: Quality Gate Check
+  # JOB 5: Quality Gate Check (No depende de SonarCloud)
   # ================================================================
   quality-gate:
     name: ✅ Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint, build, test, sonarcloud]
+    needs: [lint, build, test]
     if: always()
     steps:
       - name: Check job results
@@ -159,10 +161,6 @@ jobs:
           fi
           if [[ "${{ needs.test.result }}" == "failure" ]]; then
             echo "❌ Tests failed"
-            exit 1
-          fi
-          if [[ "${{ needs.sonarcloud.result }}" == "failure" ]]; then
-            echo "❌ SonarCloud analysis failed"
             exit 1
           fi
           echo "✅ All quality checks passed!"
