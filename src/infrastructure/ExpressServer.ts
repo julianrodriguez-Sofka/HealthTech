@@ -90,10 +90,26 @@ class ExpressServer {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
-    // CORS - HUMAN REVIEW: Configuración mejorada para Docker y desarrollo
+    // CORS - Using allowlist instead of user-controlled origin (Security fix for S8348)
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3003',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3003',
+      'http://127.0.0.1:5173',
+      'http://frontend:80',
+      'http://app:3000'
+    ];
+
     this.app.use((req: Request, _res: Response, next: NextFunction) => {
-      const origin = req.headers.origin || '*';
-      _res.setHeader('Access-Control-Allow-Origin', origin);
+      const requestOrigin = req.headers.origin;
+      // Only allow origins from the allowlist, not user-controlled data
+      const corsOrigin = requestOrigin && allowedOrigins.includes(requestOrigin) 
+        ? requestOrigin 
+        : allowedOrigins[0];
+      
+      _res.setHeader('Access-Control-Allow-Origin', corsOrigin);
       _res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       _res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Timestamp, X-Requested-With');
       _res.setHeader('Access-Control-Allow-Credentials', 'true');
