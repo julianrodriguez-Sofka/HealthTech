@@ -41,8 +41,10 @@ export const UserEditForm: React.FC<UserEditFormProps> = ({ user, onSubmit, onCa
     }
   });
 
-  const isDoctor = (user.role as string).toLowerCase() === 'doctor';
-  const isNurse = (user.role as string).toLowerCase() === 'nurse';
+  // HUMAN REVIEW: Verificar si es doctor usando enum UserRole
+  const isDoctor = user.role === UserRole.DOCTOR;
+  // HUMAN REVIEW: Verificar roles usando enum UserRole
+  const isNurse = user.role === UserRole.NURSE;
 
   const onFormSubmit = async (data: EditUserFormData) => {
     try {

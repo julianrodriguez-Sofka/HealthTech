@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Stethoscope, MessageSquare, UserPlus, CheckCircle, Clock } from 'lucide-react';
-import { Button, Modal, Textarea, Select, Badge, Card, useToast, ConfirmModal } from '@/components/ui';
-import { Patient, PatientComment, User } from '@/types';
+import { Button, Modal, Textarea, Select, Badge, Card, Input, useToast, ConfirmModal } from '@/components/ui';
+import { Patient, PatientComment, User, TriageLevel } from '@/types';
 import { PRIORITY_LABELS, getPriorityBadgeVariant } from '@/lib/constants';
 import { patientApi, userApi } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -28,18 +28,35 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
   const [activeTab, setActiveTab] = useState<'info' | 'comments' | 'actions'>('info');
   const [comments, setComments] = useState<PatientComment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [takeCaseComment, setTakeCaseComment] = useState(''); // HUMAN REVIEW: Comentario opcional al tomar caso
   const [doctors, setDoctors] = useState<User[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showDischargeConfirm, setShowDischargeConfirm] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
+  const [showProcessModal, setShowProcessModal] = useState(false); // HUMAN REVIEW: Modal para asignar proceso
+  const [selectedProcess, setSelectedProcess] = useState<string>('none');
+  const [processDetails, setProcessDetails] = useState(''); // HUMAN REVIEW: Detalles del proceso (ej: días de hospitalización, clínica)
 
   React.useEffect(() => {
     if (isOpen) {
       loadComments();
       loadDoctors();
+      // HUMAN REVIEW: Inicializar proceso seleccionado con el proceso actual del paciente cuando se abre el modal
+      if (showProcessModal) {
+        setSelectedProcess(patient.process || 'none');
+        setProcessDetails(patient.processDetails || '');
+      }
     }
   }, [isOpen, patient.id]);
+
+  // HUMAN REVIEW: Efecto separado para inicializar proceso cuando se abre el modal de proceso
+  React.useEffect(() => {
+    if (showProcessModal) {
+      setSelectedProcess(patient.process || 'none');
+      setProcessDetails(patient.processDetails || '');
+    }
+  }, [showProcessModal, patient.process, patient.processDetails]);
 
   const loadComments = async () => {
     const data = await patientApi.getComments(patient.id);
@@ -56,12 +73,31 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
     
     try {
       setIsLoading(true);
-      await patientApi.assignDoctor(patient.id, user.id);
+      // HUMAN REVIEW: Enviar comentario opcional al tomar caso
+      await patientApi.assignDoctor(patient.id, user.id, takeCaseComment.trim() || undefined);
       success('Caso asignado exitosamente');
+      setTakeCaseComment(''); // Limpiar comentario
       onSuccess();
       onClose();
     } catch (err) {
       error('Error al tomar el caso');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // HUMAN REVIEW: Nueva funcionalidad para actualizar el proceso del paciente
+  const handleUpdateProcess = async () => {
+    try {
+      setIsLoading(true);
+      await patientApi.updateProcess(patient.id, selectedProcess, processDetails.trim() || undefined);
+      success('Proceso actualizado exitosamente');
+      setShowProcessModal(false);
+      setSelectedProcess('none');
+      setProcessDetails('');
+      onSuccess();
+    } catch (err) {
+      error('Error al actualizar el proceso');
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +143,8 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
   const handleDischarge = async () => {
     try {
       setIsLoading(true);
-      await patientApi.discharge(patient.id);
+      // HUMAN REVIEW: Usar updateProcess para dar de alta en lugar de solo cambiar status
+      await patientApi.updateProcess(patient.id, 'discharge');
       success('Paciente dado de alta');
       setShowDischargeConfirm(false);
       onSuccess();
@@ -171,15 +208,23 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
               >
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Prioridad">
-                    <Badge variant={getPriorityBadgeVariant(patient.priority as any)} dot pulse={patient.priority === 1}>
-                      P{patient.priority} - {PRIORITY_LABELS[patient.priority as any]}
+                    <Badge variant={getPriorityBadgeVariant(patient.priority as TriageLevel)} dot pulse={patient.priority === 1}>
+                      P{patient.priority} - {PRIORITY_LABELS[patient.priority as TriageLevel]}
                     </Badge>
                   </InfoItem>
                   
                   <InfoItem label="Estado">
-                    <Badge variant={patient.status === 'COMPLETED' ? 'success' : patient.status === 'IN_PROGRESS' ? 'info' : 'neutral'}>
+                    <Badge variant={
+                      patient.status === 'DISCHARGED' || patient.status === 'COMPLETED' ? 'success' : 
+                      patient.status === 'IN_PROGRESS' || patient.status === 'UNDER_TREATMENT' ? 'info' : 
+                      patient.status === 'STABILIZED' ? 'warning' : 'neutral'
+                    }>
                       {patient.status === 'WAITING' && 'En espera'}
                       {patient.status === 'IN_PROGRESS' && 'En atención'}
+                      {patient.status === 'UNDER_TREATMENT' && 'En tratamiento'}
+                      {patient.status === 'STABILIZED' && 'Estabilizado'}
+                      {patient.status === 'DISCHARGED' && 'Dado de alta'}
+                      {patient.status === 'TRANSFERRED' && 'Transferido'}
                       {patient.status === 'COMPLETED' && 'Completado'}
                     </Badge>
                   </InfoItem>
@@ -194,6 +239,31 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
                   <InfoItem label="Tiempo de Espera">
                     {formatDistanceToNow(new Date(patient.arrivalTime), { locale: es, addSuffix: true })}
                   </InfoItem>
+
+                  {/* HUMAN REVIEW: Mostrar proceso/disposición del paciente si existe */}
+                  {patient.process && patient.process !== 'none' && (
+                    <>
+                      <InfoItem label="Proceso Asignado">
+                        <Badge variant={
+                          patient.process === 'discharge' ? 'success' :
+                          patient.process === 'icu' ? 'danger' :
+                          patient.process === 'hospitalization' || patient.process === 'hospitalization_days' ? 'warning' :
+                          'info'
+                        }>
+                          {patient.process === 'discharge' && 'Dar de Alta'}
+                          {patient.process === 'hospitalization' && 'Hospitalización'}
+                          {patient.process === 'hospitalization_days' && `Hospitalización ${patient.processDetails || ''}`}
+                          {patient.process === 'icu' && 'Hospitalización UCI'}
+                          {patient.process === 'referral' && 'Remisión a otra clínica'}
+                        </Badge>
+                      </InfoItem>
+                      {patient.processDetails && (
+                        <InfoItem label="Detalles del Proceso">
+                          {patient.processDetails}
+                        </InfoItem>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 <Card padding="md" className="bg-gray-50 dark:bg-gray-900/50">
@@ -295,12 +365,22 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
                       <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
                         <Stethoscope className="w-6 h-6 text-blue-600" />
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-lg mb-1">Tomar Caso</h4>
-                        <p className="text-gray-600 dark:text-gray-400 mb-3">
-                          Asignarse este paciente para iniciar su atención médica
-                        </p>
-                        <Button variant="primary" onClick={handleTakeCase} isLoading={isLoading}>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h4 className="font-semibold text-lg mb-1">Tomar Caso</h4>
+                          <p className="text-gray-600 dark:text-gray-400 mb-3">
+                            Asignarse este paciente para iniciar su atención médica
+                          </p>
+                        </div>
+                        {/* HUMAN REVIEW: Comentario opcional al tomar caso */}
+                        <Textarea
+                          placeholder="Agregar comentario inicial (opcional)..."
+                          value={takeCaseComment}
+                          onChange={(e) => setTakeCaseComment(e.target.value)}
+                          rows={2}
+                          className="mb-2"
+                        />
+                        <Button variant="primary" onClick={handleTakeCase} isLoading={isLoading} fullWidth>
                           Tomar Caso
                         </Button>
                       </div>
@@ -322,6 +402,44 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
                           </p>
                           <Button variant="secondary" onClick={() => setShowReassignModal(true)}>
                             Reasignar
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* HUMAN REVIEW: Nueva funcionalidad para asignar proceso al paciente */}
+                    <Card hoverable padding="lg" className="border-2 border-purple-500/20">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+                          <CheckCircle className="w-6 h-6 text-purple-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg mb-1">Asignar Proceso</h4>
+                          <p className="text-gray-600 dark:text-gray-400 mb-2">
+                            Definir el proceso o disposición del paciente (alta, hospitalización, remisión, UCI)
+                          </p>
+                          {patient.process && patient.process !== 'none' ? (
+                            <div className="mb-3">
+                              <Badge variant={
+                                patient.process === 'discharge' ? 'success' :
+                                patient.process === 'icu' ? 'danger' :
+                                'warning'
+                              }>
+                                {patient.process === 'discharge' && 'Dar de Alta'}
+                                {patient.process === 'hospitalization' && 'Hospitalización'}
+                                {patient.process === 'hospitalization_days' && `Hospitalización ${patient.processDetails || ''}`}
+                                {patient.process === 'icu' && 'Hospitalización UCI'}
+                                {patient.process === 'referral' && 'Remisión a otra clínica'}
+                              </Badge>
+                              {patient.processDetails && (
+                                <p className="text-sm text-gray-500 mt-1">{patient.processDetails}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500 mb-3">Sin proceso asignado</p>
+                          )}
+                          <Button variant="secondary" onClick={() => setShowProcessModal(true)}>
+                            {patient.process && patient.process !== 'none' ? 'Cambiar Proceso' : 'Asignar Proceso'}
                           </Button>
                         </div>
                       </div>
@@ -405,6 +523,88 @@ export const PatientActionsModal: React.FC<PatientActionsModalProps> = ({
         variant="info"
         isLoading={isLoading}
       />
+
+      {/* HUMAN REVIEW: Modal para asignar proceso al paciente */}
+      <Modal
+        isOpen={showProcessModal}
+        onClose={() => {
+          setShowProcessModal(false);
+          // HUMAN REVIEW: Resetear a los valores actuales del paciente
+          setSelectedProcess(patient.process || 'none');
+          setProcessDetails(patient.processDetails || '');
+        }}
+        title="Asignar Proceso al Paciente"
+        description={`Seleccione el proceso o disposición para ${patient.name}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Proceso / Disposición
+            </label>
+            <Select
+              value={selectedProcess}
+              onChange={(e) => {
+                setSelectedProcess(e.target.value);
+                // Limpiar detalles si se cambia a un proceso que no requiere detalles
+                if (e.target.value !== 'hospitalization_days' && e.target.value !== 'referral') {
+                  setProcessDetails('');
+                } else if (e.target.value === 'hospitalization_days' && !processDetails) {
+                  setProcessDetails('');
+                } else if (e.target.value === 'referral' && !processDetails) {
+                  setProcessDetails('');
+                }
+              }}
+              options={[
+                { value: 'none', label: 'Sin proceso asignado' },
+                { value: 'discharge', label: 'Dar de Alta' },
+                { value: 'hospitalization', label: 'Hospitalización General' },
+                { value: 'hospitalization_days', label: 'Hospitalización X Días' },
+                { value: 'icu', label: 'Hospitalización UCI' },
+                { value: 'referral', label: 'Remitir a otra Clínica' }
+              ]}
+            />
+          </div>
+
+          {/* HUMAN REVIEW: Mostrar campo de detalles según el proceso seleccionado */}
+          {(selectedProcess === 'hospitalization_days' || selectedProcess === 'referral') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {selectedProcess === 'hospitalization_days' ? 'Número de Días (ej: 5 días)' : 'Nombre de la Clínica (ej: Clínica San José)'}
+              </label>
+              <Input
+                type={selectedProcess === 'hospitalization_days' ? 'text' : 'text'}
+                placeholder={selectedProcess === 'hospitalization_days' ? 'Ej: 5 días' : 'Ej: Clínica San José'}
+                value={processDetails}
+                onChange={(e) => setProcessDetails(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowProcessModal(false);
+                setSelectedProcess(patient.process || 'none');
+                setProcessDetails(patient.processDetails || '');
+              }}
+              fullWidth
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleUpdateProcess}
+              isLoading={isLoading}
+              disabled={selectedProcess === 'none' || (selectedProcess === 'hospitalization_days' && !processDetails.trim()) || (selectedProcess === 'referral' && !processDetails.trim())}
+              fullWidth
+            >
+              {selectedProcess === 'none' ? 'Limpiar Proceso' : 'Asignar Proceso'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };

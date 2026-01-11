@@ -7,6 +7,7 @@
  * con documentación automática de API usando Swagger UI.
  */
 
+import { randomUUID } from 'crypto';
 import express, { Request, Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { createServer, Server as HTTPServer } from 'http';
@@ -18,9 +19,9 @@ import { RabbitMQConnection } from './messaging/rabbitmq-connection';
 import { WebSocketServer } from './sockets/websocket-server';
 import { UserRoutes } from './api/UserRoutes';
 import { PatientRoutes } from './api/PatientRoutes';
-import { PatientManagementRoutes } from './api/PatientManagementRoutes';
 import { authRouter } from './api/AuthRoutes';
 import { AuthService } from '../application/services/AuthService';
+import { User, UserRole, UserStatus } from '../domain/entities/User';
 import {
   InMemoryUserRepository,
   InMemoryDoctorRepository,
@@ -31,6 +32,11 @@ import {
 import { TriageEventBus } from '@domain/observers/TriageEventBus';
 import { DoctorNotificationObserver } from '@application/observers/DoctorNotificationObserver';
 import { MessagingService } from './messaging/MessagingService';
+import { TriageQueueManager } from './messaging/triage-queue-manager';
+// HUMAN REVIEW: Importar entidades Doctor y Nurse para crearlas correctamente en seedTestUsers
+import { Doctor, MedicalSpecialty } from '../domain/entities/Doctor';
+import { Nurse, NurseArea } from '../domain/entities/Nurse';
+import { getJwtSecret } from '../shared/config';
 
 /**
  * Clase principal del servidor Express
@@ -172,13 +178,15 @@ class ExpressServer {
         timestamp: Date.now(),
         services: {
           database: 'up', // TODO: Implementar check real
-          rabbitmq: 'up', // TODO: Implementar check real
-          socketio: 'up'  // TODO: Implementar check real
+          rabbitmq: this.rabbitMQ?.isConnected() ? 'up' : 'down',
+          socketio: this.wsServer ? 'up' : 'down'
         },
         version: info.version
       };
 
-      const httpStatusCode = status === 'healthy' ? 200 : 503;
+      // HUMAN REVIEW: status() devuelve 'OK', no 'healthy'
+      // Considerar cambiar status() para devolver 'healthy' o ajustar esta lógica
+      const httpStatusCode = (status === 'OK' || status === 'healthy') ? 200 : 503;
       res.status(httpStatusCode).json(healthCheck);
     });
 
@@ -203,7 +211,8 @@ class ExpressServer {
     });
 
     // HUMAN REVIEW: Authentication Routes
-    const jwtSecret = process.env.JWT_SECRET || 'healthtech-dev-secret-key-2026';
+    // SECURITY: Usar helper centralizado para obtener JWT_SECRET de forma segura
+    const jwtSecret = getJwtSecret();
     const authService = new AuthService(this.userRepository, jwtSecret);
     this.app.use('/api/v1/auth', authRouter(authService));
 
@@ -214,27 +223,22 @@ class ExpressServer {
     );
     this.app.use('/api/v1/users', userRoutes.getRouter());
 
-    // HUMAN REVIEW: Patient CRUD Routes (with Observer pattern)
+    // HUMAN REVIEW: Consolidar todas las rutas de pacientes en un solo router
+    // Esto evita conflictos de routing donde /:id captura rutas más específicas
+    // Pasamos todas las dependencias necesarias para las rutas de management
     const patientRoutes = new PatientRoutes(
       this.patientRepository,
       this.vitalsRepository,
-      this.eventBus
-    );
-    const patientRouter = patientRoutes.getRouter();
-
-    // HUMAN REVIEW: Patient Management Routes (enhanced endpoints)
-    const patientManagementRoutes = new PatientManagementRoutes(
-      this.patientRepository,
+      this.eventBus,
       this.doctorRepository,
       this.patientCommentRepository,
       this.userRepository
     );
-    const managementRouter = patientManagementRoutes.getRouter();
+    const patientRouter = patientRoutes.getRouter();
 
-    // Merge both routers under /api/v1/patients
-    // Basic CRUD routes come first, then management routes
+    // HUMAN REVIEW: Registrar un solo router con todas las rutas ordenadas correctamente
+    // Las rutas específicas (/:id/assign-doctor) están antes de las genéricas (/:id)
     this.app.use('/api/v1/patients', patientRouter);
-    this.app.use('/api/v1/patients', managementRouter);
 
     // Legacy placeholder endpoints
     this.setupPlaceholderEndpoints();
@@ -421,9 +425,168 @@ class ExpressServer {
   }
 
   /**
+   * Seed test users for development and testing
+   * HUMAN REVIEW: This creates default users with hashed passwords for Postman/Newman tests
+   */
+  private async seedTestUsers(): Promise<void> {
+    // SECURITY: Usar helper centralizado para obtener JWT_SECRET de forma segura
+    const jwtSecret = getJwtSecret();
+    const authService = new AuthService(this.userRepository, jwtSecret);
+
+    try {
+      // HUMAN REVIEW: Verificar si los usuarios ya existen Y si los doctores están en doctorRepository
+      // CRÍTICO: Los doctores deben estar en ambos repositorios (userRepository y doctorRepository)
+      const existingAdmin = await this.userRepository.findByEmail('admin@healthtech.com');
+      const existingDoctor = await this.userRepository.findByEmail('carlos.mendoza@healthtech.com');
+      const existingNurse = await this.userRepository.findByEmail('ana.garcia@healthtech.com');
+
+      // Verificar si el doctor existe en doctorRepository (no solo en userRepository)
+      let doctorExistsInDoctorRepo = false;
+      if (existingDoctor) {
+        const doctorInRepo = await this.doctorRepository.findById(existingDoctor.id);
+        doctorExistsInDoctorRepo = doctorInRepo !== null;
+      }
+
+      // Si todos los usuarios existen Y el doctor está en doctorRepository, saltar seeding
+      if (existingAdmin && existingDoctor && existingNurse && doctorExistsInDoctorRepo) {
+        console.log('⏭️  Test users already seeded correctly - skipping');
+        return;
+      }
+
+      // HUMAN REVIEW: Si faltan usuarios o el doctor no está en doctorRepository, limpiar y recrear
+      // Esto asegura que los doctores se creen correctamente como entidades Doctor
+      console.log('🔄 Re-seeding test users with correct entity types...');
+      // Limpiar usuarios existentes
+      const allUsers = await this.userRepository.findAll();
+      for (const user of allUsers) {
+        await this.userRepository.delete(user.id);
+      }
+      // Limpiar doctores
+      const doctorRepoWithClear = this.doctorRepository as unknown as { clear?: () => void };
+      if (typeof doctorRepoWithClear.clear === 'function') {
+        doctorRepoWithClear.clear();
+      }
+      // Limpiar también password hashes
+      const userRepoWithClear = this.userRepository as unknown as { clear?: () => void };
+      if (typeof userRepoWithClear.clear === 'function') {
+        userRepoWithClear.clear();
+      }
+
+      // HUMAN REVIEW: Crear usuarios de prueba con contraseñas hasheadas
+      // IMPORTANTE: Estos emails y contraseñas deben coincidir con los usados en el frontend
+      // El frontend usa 'password123' como contraseña por defecto
+      const testUsers = [
+        {
+          email: 'admin@healthtech.com',
+          name: 'María Rodríguez',
+          role: 'admin' as const,
+          password: 'password123'
+        },
+        {
+          email: 'carlos.mendoza@healthtech.com',
+          name: 'Dr. Carlos Mendoza',
+          role: 'doctor' as const,
+          password: 'password123'
+        },
+        {
+          email: 'ana.garcia@healthtech.com',
+          name: 'Ana García',
+          role: 'nurse' as const,
+          password: 'password123'
+        },
+        // Usuarios adicionales para compatibilidad con diferentes variantes
+        {
+          email: 'doctor@healthtech.com',
+          name: 'Dr. Juan García',
+          role: 'doctor' as const,
+          password: 'password123'
+        },
+        {
+          email: 'enfermera@healthtech.com',
+          name: 'Enfermera María López',
+          role: 'nurse' as const,
+          password: 'password123'
+        }
+      ];
+
+      for (const userData of testUsers) {
+        // Hash password
+        const passwordHash = await authService.hashPassword(userData.password);
+
+        // HUMAN REVIEW: Crear la entidad correcta según el rol
+        // CRÍTICO: Los doctores deben crearse como Doctor, no como User genérico
+        // porque AssignDoctorToPatientUseCase busca en doctorRepository, no en userRepository
+        let user: User;
+
+        if (userData.role === 'doctor') {
+          // Crear Doctor con especialidad y licencia
+          const doctor = Doctor.createDoctor({
+            email: userData.email,
+            name: userData.name,
+            status: UserStatus.ACTIVE,
+            specialty: MedicalSpecialty.EMERGENCY_MEDICINE, // Especialidad por defecto para triage
+            licenseNumber: `LIC-${Date.now()}-${randomUUID().substring(0, 8)}`,
+            isAvailable: true,
+            maxPatientLoad: 10
+          });
+
+          // Guardar en ambos repositorios: userRepository (para login) y doctorRepository (para asignación)
+          await this.userRepository.save(doctor);
+          await this.doctorRepository.save(doctor);
+
+          user = doctor;
+          console.log('  ✓ Doctor entity created and saved in both repositories');
+        } else if (userData.role === 'nurse') {
+          // Crear Nurse con área y turno
+          const nurse = Nurse.createNurse({
+            email: userData.email,
+            name: userData.name,
+            status: UserStatus.ACTIVE,
+            area: NurseArea.TRIAGE, // Área por defecto para enfermeras de triage
+            shift: 'morning',
+            licenseNumber: `LIC-${Date.now()}-${randomUUID().substring(0, 8)}`
+          });
+
+          await this.userRepository.save(nurse);
+          user = nurse;
+          console.log('  ✓ Nurse entity created and saved');
+        } else {
+          // Crear User genérico para admin
+          user = User.create({
+            email: userData.email,
+            name: userData.name,
+            role: UserRole.ADMIN,
+            status: UserStatus.ACTIVE
+          });
+
+          await this.userRepository.save(user);
+        }
+
+        // Save password hash - CRÍTICO para que el login funcione
+        // HUMAN REVIEW: El repositorio InMemory implementa savePasswordHash, debe llamarse siempre
+        if ('savePasswordHash' in this.userRepository &&
+            typeof this.userRepository.savePasswordHash === 'function') {
+          await this.userRepository.savePasswordHash(user.id, passwordHash);
+          console.log(`  ✓ Password hash saved for ${userData.email}`);
+        } else {
+          console.error(`  ✗ ERROR: savePasswordHash method not available for ${userData.email}`);
+        }
+
+        console.log(`✅ Test user created: ${userData.email} (password: ${userData.password})`);
+      }
+
+      console.log('✅ Test users seeded successfully');
+    } catch (error) {
+      console.error('❌ Error seeding test users:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Inicia el servidor
    *
    * HUMAN REVIEW: Inicialización secuencial de dependencias externas:
+   * 0. Seed test users (development/testing only)
    * 1. RabbitMQ (opcional - no falla si no está disponible)
    * 2. Observer Pattern (registrar DoctorNotificationObserver en EventBus)
    * 3. Database (PostgreSQL connection pool)
@@ -432,6 +595,10 @@ class ExpressServer {
    */
   public async start(): Promise<void> {
     try {
+      // 0. Seed test users (development/testing only)
+      // HUMAN REVIEW: Eliminar en producción o usar variables de entorno
+      await this.seedTestUsers();
+
       // 1. Inicializar RabbitMQ (opcional - sistema degradado si falla)
       try {
         this.rabbitMQ = new RabbitMQConnection({
@@ -475,6 +642,26 @@ class ExpressServer {
       });
       this.wsServer.initialize(this.httpServer);
       console.log('✅ WebSocket server initialized');
+
+      // 5.1. Conectar consumidor de RabbitMQ con WebSocket Server
+      // HUMAN REVIEW: Este es el puente crítico: mensajes de RabbitMQ → WebSocket → Clientes
+      // REQUISITO HU.md: Notificaciones en tiempo real a médicos (<3 segundos)
+      if (this.rabbitMQ && this.wsServer) {
+        const triageQueueManager = new TriageQueueManager(this.rabbitMQ);
+
+        // Inicializar colas de RabbitMQ (idempotente - no falla si ya existen)
+        await triageQueueManager.initializeQueues();
+
+        // Consumir mensajes de alta prioridad y emitirlos vía WebSocket
+        await triageQueueManager.consumeHighPriorityQueue(async (notification) => {
+          console.log(`[RabbitMQ→WebSocket] 🚨 High priority notification received: Patient ${notification.patientId}, Priority ${notification.priorityLevel}`);
+
+          // Emitir a todos los clientes WebSocket conectados
+          this.wsServer!.emitHighPriorityAlert(notification);
+        });
+
+        console.log('✅ RabbitMQ → WebSocket bridge initialized (high priority queue consumer active)');
+      }
 
       // 6. Iniciar servidor HTTP
       this.httpServer.listen(this.port, () => {

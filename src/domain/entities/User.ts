@@ -7,6 +7,8 @@
  * HUMAN REVIEW: Passwords deben ser hasheados antes de persistir (en infrastructure)
  */
 
+import { randomUUID } from 'crypto';
+
 export enum UserRole {
   ADMIN = 'admin',
   DOCTOR = 'doctor',
@@ -47,7 +49,8 @@ export class User {
    * HUMAN REVIEW: Validar email format con regex más robusto si es necesario
    */
   static create(params: Omit<UserProps, 'id' | 'createdAt' | 'updatedAt'>): User {
-    const id = `user-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // SECURITY: Using crypto.randomUUID() instead of Math.random()
+    const id = `user-${Date.now()}-${randomUUID().substring(0, 8)}`;
     const now = new Date();
 
     return new User({
@@ -142,6 +145,31 @@ export class User {
       throw new Error(`Invalid status: ${newStatus}`);
     }
     this.props.status = newStatus;
+    this.props.updatedAt = new Date();
+  }
+
+  /**
+   * Update user name
+   * HUMAN REVIEW: Método para actualizar nombre siguiendo principios de encapsulación
+   */
+  updateName(newName: string): void {
+    if (!newName || newName.trim().length < 2) {
+      throw new Error('Name must be at least 2 characters');
+    }
+    this.props.name = newName.trim();
+    this.props.updatedAt = new Date();
+  }
+
+  /**
+   * Update user email
+   * HUMAN REVIEW: Método para actualizar email con validación y normalización
+   */
+  updateEmail(newEmail: string): void {
+    if (!newEmail || !newEmail.includes('@')) {
+      throw new Error('Valid email is required');
+    }
+    // Normalizar email a lowercase para consistencia
+    this.props.email = newEmail.toLowerCase().trim();
     this.props.updatedAt = new Date();
   }
 

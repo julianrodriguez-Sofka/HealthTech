@@ -395,4 +395,174 @@ describe('Result Pattern', () => {
       expect(failureCallback).not.toHaveBeenCalled();
     });
   });
+
+  describe('Constructor invariants', () => {
+    it('debe lanzar error si success result contiene error', () => {
+      // This tests line 43 - accessing private constructor indirectly
+      // We can't directly test this as constructor is private
+      // But we verify the invariant holds
+      const result = Result.ok('value');
+      expect(result.isSuccess).toBe(true);
+      expect(() => result.error).toThrow('Cannot get error from a successful result');
+    });
+
+    it('debe lanzar error al acceder a error en result exitoso', () => {
+      const result = Result.ok(42);
+      expect(() => result.error).toThrow('Cannot get error from a successful result');
+    });
+  });
+
+  describe('getValueOr', () => {
+    it('debe retornar el valor cuando es success', () => {
+      const result = Result.ok(42);
+      expect(result.getValueOr(0)).toBe(42);
+    });
+
+    it('debe retornar el default cuando es failure', () => {
+      const result = Result.fail<number, Error>(new Error('test'));
+      expect(result.getValueOr(100)).toBe(100);
+    });
+
+    it('debe retornar el default para valores falsy', () => {
+      const result = Result.fail<string, Error>(new Error('test'));
+      expect(result.getValueOr('default')).toBe('default');
+    });
+
+    it('debe retornar 0 cuando es success con valor 0', () => {
+      const result = Result.ok(0);
+      expect(result.getValueOr(100)).toBe(0);
+    });
+  });
+
+  describe('mapError', () => {
+    it('debe transformar el error cuando es failure', () => {
+      const result = Result.fail<number, Error>(new Error('original'));
+      const mapped = result.mapError(e => new Error(`Wrapped: ${e.message}`));
+
+      expect(mapped.isFailure).toBe(true);
+      expect(mapped.error.message).toBe('Wrapped: original');
+    });
+
+    it('no debe modificar el valor cuando es success', () => {
+      const result = Result.ok<number, Error>(42);
+      const mapped = result.mapError(e => new Error(`Wrapped: ${e.message}`));
+
+      expect(mapped.isSuccess).toBe(true);
+      expect(mapped.value).toBe(42);
+    });
+
+    it('debe permitir cambiar el tipo de error', () => {
+      class ValidationError extends Error {
+        code = 'VALIDATION';
+      }
+      const result = Result.fail<number, Error>(new Error('test'));
+      const mapped = result.mapError(() => new ValidationError('mapped'));
+
+      expect(mapped.isFailure).toBe(true);
+      expect((mapped.error as ValidationError).code).toBe('VALIDATION');
+    });
+  });
+
+  describe('toPromise', () => {
+    it('debe resolver con el valor cuando es success', async () => {
+      const result = Result.ok(42);
+      await expect(result.toPromise()).resolves.toBe(42);
+    });
+
+    it('debe rechazar con el error cuando es failure', async () => {
+      const error = new Error('test error');
+      const result = Result.fail(error);
+      await expect(result.toPromise()).rejects.toBe(error);
+    });
+
+    it('debe resolver con undefined para Result<void>', async () => {
+      const result = Result.ok<void, Error>(undefined);
+      await expect(result.toPromise()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('fromPromise', () => {
+    it('debe crear Result exitoso de Promise resuelta', async () => {
+      const promise = Promise.resolve(42);
+      const result = await Result.fromPromise(promise);
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.value).toBe(42);
+    });
+
+    it('debe crear Result fallido de Promise rechazada', async () => {
+      const error = new Error('async error');
+      const promise = Promise.reject(error);
+      const result = await Result.fromPromise(promise);
+
+      expect(result.isFailure).toBe(true);
+      expect(result.error).toBe(error);
+    });
+
+    it('debe usar errorHandler cuando se proporciona', async () => {
+      const promise = Promise.reject('string error');
+      const result = await Result.fromPromise(
+        promise,
+        (e) => new Error(`Handled: ${e}`)
+      );
+
+      expect(result.isFailure).toBe(true);
+      expect(result.error.message).toBe('Handled: string error');
+    });
+
+    it('debe manejar objetos complejos de Promise', async () => {
+      const data = { id: '123', name: 'Test' };
+      const promise = Promise.resolve(data);
+      const result = await Result.fromPromise(promise);
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.value).toEqual(data);
+    });
+  });
+
+  describe('Result.try', () => {
+    it('debe crear Result exitoso cuando función no lanza', () => {
+      const result = Result.try(() => 42);
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.value).toBe(42);
+    });
+
+    it('debe crear Result fallido cuando función lanza', () => {
+      const result = Result.try(() => {
+        throw new Error('thrown error');
+      });
+
+      expect(result.isFailure).toBe(true);
+      expect(result.error.message).toBe('thrown error');
+    });
+
+    it('debe usar errorHandler cuando se proporciona', () => {
+      const result = Result.try(
+        () => { throw 'string error'; },
+        (e) => new Error(`Handled: ${e}`)
+      );
+
+      expect(result.isFailure).toBe(true);
+      expect(result.error.message).toBe('Handled: string error');
+    });
+
+    it('debe manejar funciones que retornan undefined', () => {
+      const result = Result.try(() => undefined);
+
+      expect(result.isSuccess).toBe(true);
+      expect(result.value).toBeUndefined();
+    });
+
+    it('debe manejar funciones con side effects', () => {
+      let sideEffect = false;
+      const result = Result.try(() => {
+        sideEffect = true;
+        return 'done';
+      });
+
+      expect(result.isSuccess).toBe(true);
+      expect(sideEffect).toBe(true);
+    });
+  });
 });

@@ -5,7 +5,8 @@ import type {
   PatientComment,
   AddCommentRequest,
   User,
-  CreateUserRequest
+  CreateUserRequest,
+  PatientStatus
 } from '@/types';
 
 // Patient API
@@ -31,12 +32,19 @@ export const patientApi = {
   },
 
   create: async (data: CreatePatientRequest): Promise<Patient> => {
+    // HUMAN REVIEW: Mapear género del frontend (M/F/OTHER) al formato del backend (male/female/other)
+    const genderMap: Record<string, 'male' | 'female' | 'other'> = {
+      'M': 'male',
+      'F': 'female',
+      'OTHER': 'other'
+    };
+    
     // El backend espera 'vitals' en lugar de 'vitalSigns' y 'symptoms' como array
     const requestData = {
       name: data.name,
       age: data.age,
-      gender: data.gender.toLowerCase() as 'male' | 'female' | 'other', // Backend espera minúsculas
-      symptoms: [data.symptoms], // Backend espera array, convertir string a array
+      gender: genderMap[data.gender] || 'other', // Mapear correctamente M->male, F->female, OTHER->other
+      symptoms: typeof data.symptoms === 'string' ? [data.symptoms] : (Array.isArray(data.symptoms) ? data.symptoms : []), // Backend espera array
       vitals: { // Backend espera 'vitals' no 'vitalSigns'
         bloodPressure: data.vitalSigns.bloodPressure,
         heartRate: data.vitalSigns.heartRate,
@@ -45,33 +53,103 @@ export const patientApi = {
         oxygenSaturation: data.vitalSigns.oxygenSaturation
       },
       priority: data.priority,
-      manualPriority: data.priority // Enviar también como manualPriority
+      manualPriority: data.priority // Enviar también como manualPriority - REQUISITO HU.md US-003
     };
     
-    const response = await apiClient.post<Patient>('/patients', requestData);
-    return response.data;
+    try {
+      const response = await apiClient.post<any>('/patients', requestData);
+      
+      // HUMAN REVIEW: Verificar que la respuesta tenga los datos necesarios
+      if (!response.data || !response.data.id) {
+        throw new Error('Respuesta del servidor inválida: falta ID del paciente');
+      }
+      
+      const responseData = response.data;
+      
+      // Mapear respuesta del backend al formato del frontend
+      const patient: Patient = {
+        id: responseData.id,
+        name: responseData.name || `${responseData.firstName || ''} ${responseData.lastName || ''}`.trim(),
+        age: responseData.age || data.age,
+        gender: (responseData.gender?.toUpperCase() || data.gender) as 'M' | 'F' | 'OTHER',
+        identificationNumber: responseData.id || responseData.identificationNumber || data.identificationNumber || '', // HUMAN REVIEW: Usar ID como fallback si no hay identificationNumber
+        address: data.address,
+        phone: data.phone,
+        emergencyContact: data.emergencyContact,
+        emergencyPhone: data.emergencyPhone,
+        symptoms: Array.isArray(responseData.symptoms) ? responseData.symptoms.join(', ') : (responseData.symptoms || data.symptoms),
+        vitalSigns: {
+          bloodPressure: responseData.vitals?.bloodPressure || data.vitalSigns.bloodPressure,
+          heartRate: responseData.vitals?.heartRate || data.vitalSigns.heartRate,
+          temperature: responseData.vitals?.temperature || data.vitalSigns.temperature,
+          respiratoryRate: responseData.vitals?.respiratoryRate || data.vitalSigns.respiratoryRate,
+          oxygenSaturation: responseData.vitals?.oxygenSaturation || data.vitalSigns.oxygenSaturation
+        },
+        priority: responseData.priority || data.priority,
+        status: (responseData.status?.toUpperCase() || 'WAITING') as PatientStatus,
+        process: responseData.process || undefined,
+        processDetails: responseData.processDetails || undefined,
+        arrivalTime: responseData.arrivalTime || responseData.registeredAt || new Date().toISOString(),
+        createdAt: responseData.createdAt || responseData.registeredAt || new Date().toISOString(),
+        updatedAt: responseData.updatedAt || responseData.registeredAt || new Date().toISOString()
+      };
+      
+      return patient;
+    } catch (error: any) {
+      console.error('Error creating patient:', error);
+      
+      // HUMAN REVIEW: Proporcionar mensaje de error más descriptivo
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      if (error.response?.status === 400) {
+        throw new Error('Datos inválidos. Por favor verifique la información ingresada.');
+      }
+      if (error.response?.status === 401) {
+        throw new Error('Sesión expirada. Por favor inicie sesión nuevamente.');
+      }
+      
+      throw new Error(error.message || 'Error al registrar paciente. Por favor intente nuevamente.');
+    }
   },
 
-  assignDoctor: async (patientId: string, doctorId: string): Promise<Patient> => {
-    const response = await apiClient.patch<Patient>(`/patients/${patientId}/assign`, { doctorId });
-    return response.data;
-  },
-
-  reassignDoctor: async (patientId: string, newDoctorId: string): Promise<Patient> => {
-    const response = await apiClient.patch<Patient>(`/patients/${patientId}/reassign`, { 
-      doctorId: newDoctorId 
+  assignDoctor: async (patientId: string, doctorId: string, comment?: string): Promise<Patient> => {
+    // HUMAN REVIEW: Enviar comentario opcional al tomar caso
+    const response = await apiClient.post<Patient>(`/patients/${patientId}/assign-doctor`, { 
+      doctorId,
+      comment: comment || undefined
     });
     return response.data;
   },
 
+  reassignDoctor: async (patientId: string, doctorId: string): Promise<Patient> => {
+    // Reasignar es lo mismo que asignar, pero puede tener lógica diferente en el futuro
+    const response = await apiClient.post<Patient>(`/patients/${patientId}/assign-doctor`, { doctorId });
+    return response.data;
+  },
+
+  updateStatus: async (patientId: string, status: string): Promise<Patient> => {
+    const response = await apiClient.patch<Patient>(`/patients/${patientId}/status`, { status });
+    return response.data;
+  },
+
   discharge: async (patientId: string): Promise<Patient> => {
-    const response = await apiClient.patch<Patient>(`/patients/${patientId}/discharge`);
+    const response = await apiClient.patch<Patient>(`/patients/${patientId}/status`, { status: 'discharged' });
+    return response.data;
+  },
+
+  // HUMAN REVIEW: Nueva funcionalidad para actualizar el proceso del paciente
+  updateProcess: async (patientId: string, process: string, processDetails?: string): Promise<Patient> => {
+    const response = await apiClient.patch<Patient>(`/patients/${patientId}/process`, { 
+      process,
+      processDetails: processDetails || undefined
+    });
     return response.data;
   },
 
   setPriority: async (patientId: string, priority: number): Promise<Patient> => {
     const response = await apiClient.patch<Patient>(`/patients/${patientId}/priority`, { 
-      priority 
+      manualPriority: priority 
     });
     return response.data;
   },
@@ -87,10 +165,16 @@ export const patientApi = {
   },
 
   addComment: async (data: AddCommentRequest): Promise<PatientComment> => {
+    // HUMAN REVIEW: Enviar authorId correctamente según lo que espera el backend
     const response = await apiClient.post<PatientComment>(
       `/patients/${data.patientId}/comments`,
-      { content: data.content, doctorId: data.doctorId }
+      { 
+        content: data.content, 
+        authorId: data.doctorId, // Backend espera authorId, no doctorId
+        type: 'observation' // Backend requiere tipo de comentario (default: observation)
+      }
     );
+    // HUMAN REVIEW: El backend ahora retorna el comentario directamente, no dentro de {success, comment}
     return response.data;
   }
 };
@@ -114,8 +198,8 @@ export const userApi = {
 
   getDoctors: async (): Promise<User[]> => {
     try {
-      const response = await apiClient.get<any>('/users/doctors');
-      // Backend devuelve { success: true, data: doctors[] }
+      const response = await apiClient.get<any>('/users', { params: { role: 'doctor' } });
+      // Backend devuelve { success: true, data: users[], count: number }
       if (response.data && response.data.data && Array.isArray(response.data.data)) {
         return response.data.data;
       }
@@ -244,7 +328,11 @@ export const userApi = {
 export const doctorApi = {
   getMyPatients: async (doctorId: string): Promise<Patient[]> => {
     try {
-      const response = await apiClient.get<Patient[]>(`/doctors/${doctorId}/patients`);
+      const response = await apiClient.get<any>(`/patients/assigned/${doctorId}`);
+      // Backend puede devolver { success: true, patients: [] }
+      if (response.data && response.data.patients && Array.isArray(response.data.patients)) {
+        return response.data.patients;
+      }
       return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
       console.error('Error fetching doctor patients:', error);

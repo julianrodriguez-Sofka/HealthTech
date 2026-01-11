@@ -149,36 +149,35 @@ services:
       - healthtech-network
 
   # ==================================================================
-  # SERVICIO 4: Frontend (React + Vite Dev Server)
+  # SERVICIO 4: Frontend (React + Nginx - Producción)
   # ==================================================================
   # Aplicación frontend con:
   # - React 18 para UI interactiva
   # - Tailwind CSS para diseño moderno
   # - WebSocket client para actualizaciones en tiempo real
-  # - Vite dev server para desarrollo rápido
+  # - Nginx para servir archivos estáticos (producción)
+  # 
+  # HUMAN REVIEW: Refactoricé para usar Nginx en producción en lugar
+  # de Vite dev server. Nginx es más eficiente y seguro para producción.
   # ==================================================================
   frontend:
     build:
       context: ./frontend-new
       dockerfile: Dockerfile
+      target: production
     container_name: healthtech-frontend
     restart: unless-stopped
     ports:
-      - "3003:3003"  # Vite dev server
-    environment:
-      - VITE_API_URL=http://localhost:3000/api/v1
-      - VITE_BACKEND_URL=http://app:3000
+      - "3003:80"  # Nginx HTTP (puerto 3003 en host, 80 en contenedor)
     depends_on:
-      - app
-    volumes:
-      - ./frontend-new/src:/app/src
-      - ./frontend-new/public:/app/public
+      app:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3003"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 30s
       timeout: 3s
       retries: 3
-      start_period: 15s
+      start_period: 10s
     networks:
       - healthtech-network
 
@@ -227,7 +226,7 @@ networks:
 #   http://localhost:15672 (admin / admin2026)
 #
 # Acceder a la aplicación:
-#   Frontend: http://localhost
+#   Frontend: http://localhost:3003
 #   API Backend: http://localhost:3000
 #   WebSocket: ws://localhost:3000
 #

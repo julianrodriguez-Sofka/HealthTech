@@ -20,14 +20,17 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     return <Navigate to="/login" replace />;
   }
 
+  // HUMAN REVIEW: Verificar si el rol del usuario está en los roles permitidos
+  // Comparar usando enum UserRole
   if (!allowedRoles.includes(user.role)) {
     // Redirect to user's default dashboard
-    const defaultRoute = {
-      NURSE: '/nurse',
-      DOCTOR: '/doctor',
-      ADMIN: '/admin'
-    }[user.role];
+    const defaultRoutes: Record<UserRole, string> = {
+      [UserRole.NURSE]: '/nurse',
+      [UserRole.DOCTOR]: '/doctor',
+      [UserRole.ADMIN]: '/admin'
+    };
     
+    const defaultRoute = defaultRoutes[user.role] || '/login';
     return <Navigate to={defaultRoute} replace />;
   }
 

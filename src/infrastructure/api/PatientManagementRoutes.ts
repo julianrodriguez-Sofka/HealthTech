@@ -3,11 +3,12 @@
  *
  * REST endpoints para gestión avanzada de pacientes
  * Endpoints:
- * - PATCH /api/v1/patients/:id/assign-doctor - Asignar médico a paciente
- * - POST /api/v1/patients/:id/comments - Agregar comentario a paciente
+ * - POST /api/v1/patients/:id/assign-doctor - Asignar médico a paciente (HU.md US-005)
+ * - POST /api/v1/patients/:id/comments - Agregar comentario a paciente (HU.md US-006)
  * - PATCH /api/v1/patients/:id/status - Actualizar estado del paciente
  * - PATCH /api/v1/patients/:id/priority - Establecer prioridad manual
  * - GET /api/v1/patients/assigned/:doctorId - Obtener pacientes asignados a un médico
+ * - GET /api/v1/patients/:id/comments - Obtener comentarios de un paciente
  */
 
 import { Router, Request, Response } from 'express';
@@ -37,8 +38,12 @@ export class PatientManagementRoutes {
   }
 
   private configureRoutes(): void {
-    // Asignar doctor a paciente
-    this.router.patch('/:id/assign-doctor', this.assignDoctor.bind(this));
+    // HUMAN REVIEW: Orden crítico - rutas específicas primero, genéricas al final
+    // Esto evita que /:id capture rutas como /:id/assign-doctor
+
+    // Rutas específicas con sub-rutas (deben ir ANTES de /:id)
+    // Asignar doctor a paciente (POST para acciones según RESTful best practices)
+    this.router.post('/:id/assign-doctor', this.assignDoctor.bind(this));
 
     // Agregar comentario
     this.router.post('/:id/comments', this.addComment.bind(this));
@@ -49,16 +54,20 @@ export class PatientManagementRoutes {
     // Establecer prioridad manual
     this.router.patch('/:id/priority', this.setManualPriority.bind(this));
 
-    // Obtener pacientes asignados a un médico
-    this.router.get('/assigned/:doctorId', this.getDoctorPatients.bind(this));
-
-    // Obtener comentarios de un paciente
+    // Obtener comentarios de un paciente (GET específico antes de /:id genérico)
     this.router.get('/:id/comments', this.getPatientComments.bind(this));
+
+    // Obtener pacientes asignados a un médico (ruta específica sin /:id)
+    this.router.get('/assigned/:doctorId', this.getDoctorPatients.bind(this));
   }
 
   /**
-   * PATCH /api/v1/patients/:id/assign-doctor
+   * POST /api/v1/patients/:id/assign-doctor
    * Asignar médico a paciente
+   *
+   * HUMAN REVIEW: Endpoint para tomar un caso según HU.md US-005
+   * "Un Médico selecciona un paciente de la lista para tomar su caso"
+   * "Una vez que el Médico toma el caso, este se marca como 'en atención'"
    */
   private async assignDoctor(req: Request, res: Response): Promise<void> {
     try {
@@ -96,16 +105,51 @@ export class PatientManagementRoutes {
         return;
       }
 
-      res.status(200).json({
-        success: true,
-        patient: result.patient,
-        message: 'Doctor asignado exitosamente'
-      });
+      // HUMAN REVIEW: Obtener paciente actualizado para retornarlo al frontend
+      const updatedPatient = await this.patientRepository.findEntityById(id);
+      if (!updatedPatient) {
+        res.status(404).json({
+          success: false,
+          error: 'Paciente no encontrado después de la asignación'
+        });
+        return;
+      }
+
+      const patientJson = updatedPatient.toJSON();
+
+      // HUMAN REVIEW: Mapear Patient entity al formato esperado por el frontend
+      const mappedPatient = {
+        id: patientJson.id,
+        name: patientJson.name,
+        firstName: patientJson.name.split(' ')[0] || '',
+        lastName: patientJson.name.split(' ').slice(1).join(' ') || '',
+        age: patientJson.age,
+        gender: patientJson.gender === 'male' ? 'M' : (patientJson.gender === 'female' ? 'F' : 'OTHER'),
+        identificationNumber: '',
+        symptoms: Array.isArray(patientJson.symptoms) ? patientJson.symptoms.join(', ') : (patientJson.symptoms || ''),
+        vitalSigns: {
+          bloodPressure: patientJson.vitals.bloodPressure || '120/80',
+          heartRate: patientJson.vitals.heartRate || 72,
+          temperature: patientJson.vitals.temperature || 36.5,
+          respiratoryRate: patientJson.vitals.respiratoryRate || 16,
+          oxygenSaturation: patientJson.vitals.oxygenSaturation || 98
+        },
+        priority: patientJson.manualPriority || patientJson.priority,
+        status: patientJson.status.toUpperCase(),
+        doctorId: patientJson.assignedDoctorId,
+        doctorName: patientJson.assignedDoctorName,
+        arrivalTime: patientJson.arrivalTime.toISOString(),
+        createdAt: patientJson.createdAt.toISOString(),
+        updatedAt: patientJson.updatedAt.toISOString()
+      };
+
+      res.status(200).json(mappedPatient);
     } catch (error) {
       console.error('[PatientManagementRoutes] Error assigning doctor:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error interno del servidor al asignar doctor';
       res.status(500).json({
         success: false,
-        error: 'Error interno del servidor al asignar doctor'
+        error: errorMessage
       });
     }
   }
@@ -360,9 +404,9 @@ export class PatientManagementRoutes {
           result.error.includes('connection') ||
           result.error.includes('network')
         );
-        
+
         const statusCode = isInfrastructureError ? 500 : 400;
-        
+
         res.status(statusCode).json({
           success: false,
           error: result.error

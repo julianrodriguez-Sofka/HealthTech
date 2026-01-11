@@ -82,9 +82,12 @@ export class AddCommentToPatientUseCase {
       await this.commentRepository.save(comment);
       await this.patientRepository.saveEntity(patient);
 
+      // HUMAN REVIEW: Retornar el comentario completo para que el endpoint pueda responder con todos los datos
       return {
         success: true,
         commentId: comment.id,
+        comment: comment, // Agregar el comentario completo para respuesta del endpoint
+        message: 'Comentario agregado exitosamente'
       };
     } catch (error) {
       return {

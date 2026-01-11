@@ -13,6 +13,8 @@ export interface RegisterPatientBody {
   gender: 'male' | 'female' | 'other';
   symptoms: string[];
   vitals: VitalSigns;
+  priority?: PatientPriority; // Prioridad enviada desde frontend
+  manualPriority?: PatientPriority; // Prioridad manual asignada por enfermero
   assignedNurseId?: string;
   registeredBy?: string;
 }
@@ -21,11 +23,24 @@ export interface UpdatePatientBody {
   vitals?: VitalSigns;
   manualPriority?: PatientPriority;
   status?: PatientStatus;
+  process?: string; // PatientProcess as string
+  processDetails?: string;
+}
+
+export interface AssignDoctorBody {
+  doctorId: string;
+  comment?: string; // HUMAN REVIEW: Comentario opcional al tomar caso
+}
+
+export interface UpdateProcessBody {
+  process: string; // PatientProcess as string
+  processDetails?: string; // Detalles adicionales (ej: días de hospitalización, clínica de remisión)
 }
 
 export interface AddCommentBody {
   content: string;
-  type: CommentType;
+  authorId: string; // HUMAN REVIEW: Agregar authorId que es requerido por el backend
+  type?: CommentType; // HUMAN REVIEW: Hacer opcional con valor por defecto
 }
 
 export interface CreateUserBody {

@@ -9,6 +9,7 @@ import {
   Patient,
   PatientPriority,
   PatientStatus,
+  PatientProcess,
   VitalSigns,
   PatientProps,
 } from '../../src/domain/entities/Patient';
@@ -778,6 +779,154 @@ describe('Patient Entity - Domain', () => {
       expect(json).toHaveProperty('vitals');
       expect(json).toHaveProperty('priority');
       expect(json).toHaveProperty('status');
+    });
+  });
+
+  describe('Additional Getters Coverage', () => {
+    it('debe exponer arrivalTime correctamente', () => {
+      const arrivalTime = new Date('2026-01-10T10:00:00Z');
+      const patient = createTestPatient({ arrivalTime });
+
+      expect(patient.arrivalTime).toEqual(arrivalTime);
+    });
+
+    it('debe exponer process como undefined inicialmente', () => {
+      const patient = createTestPatient();
+      expect(patient.process).toBeUndefined();
+    });
+
+    it('debe exponer processDetails como undefined inicialmente', () => {
+      const patient = createTestPatient();
+      expect(patient.processDetails).toBeUndefined();
+    });
+  });
+
+  describe('setProcess()', () => {
+    it('debe establecer proceso DISCHARGE correctamente', () => {
+      const patient = createTestPatient();
+      patient.setProcess(PatientProcess.DISCHARGE, 'Patient recovered fully');
+
+      expect(patient.process).toBe(PatientProcess.DISCHARGE);
+      expect(patient.processDetails).toBe('Patient recovered fully');
+      expect(patient.status).toBe(PatientStatus.DISCHARGED);
+    });
+
+    it('debe establecer proceso ICU y cambiar status a UNDER_TREATMENT', () => {
+      const patient = createTestPatient();
+      patient.setProcess(PatientProcess.ICU, 'Critical condition');
+
+      expect(patient.process).toBe(PatientProcess.ICU);
+      expect(patient.status).toBe(PatientStatus.UNDER_TREATMENT);
+    });
+
+    it('debe establecer proceso HOSPITALIZATION', () => {
+      const patient = createTestPatient();
+      patient.setProcess(PatientProcess.HOSPITALIZATION);
+
+      expect(patient.process).toBe(PatientProcess.HOSPITALIZATION);
+      expect(patient.status).toBe(PatientStatus.UNDER_TREATMENT);
+    });
+
+    it('debe establecer proceso HOSPITALIZATION_DAYS', () => {
+      const patient = createTestPatient();
+      patient.setProcess(PatientProcess.HOSPITALIZATION_DAYS, '5 days observation');
+
+      expect(patient.process).toBe(PatientProcess.HOSPITALIZATION_DAYS);
+      expect(patient.status).toBe(PatientStatus.UNDER_TREATMENT);
+    });
+
+    it('debe establecer proceso REFERRAL y cambiar status a TRANSFERRED', () => {
+      const patient = createTestPatient();
+      patient.setProcess(PatientProcess.REFERRAL, 'Referred to specialist');
+
+      expect(patient.process).toBe(PatientProcess.REFERRAL);
+      expect(patient.status).toBe(PatientStatus.TRANSFERRED);
+    });
+
+    it('debe lanzar error para proceso inválido', () => {
+      const patient = createTestPatient();
+
+      expect(() =>
+        patient.setProcess('invalid_process' as PatientProcess)
+      ).toThrow(/Invalid process/);
+    });
+
+    it('debe establecer dischargeTime cuando proceso es DISCHARGE', () => {
+      const patient = createTestPatient();
+      patient.setProcess(PatientProcess.DISCHARGE);
+
+      expect(patient.toJSON().dischargeTime).toBeDefined();
+    });
+
+    it('no debe sobrescribir dischargeTime si ya existe', () => {
+      const patient = createTestPatient();
+      const originalDischargeTime = new Date('2026-01-01T00:00:00Z');
+      (patient as any).props.dischargeTime = originalDischargeTime;
+
+      patient.setProcess(PatientProcess.DISCHARGE);
+
+      expect(patient.toJSON().dischargeTime).toEqual(originalDischargeTime);
+    });
+  });
+
+  describe('clearProcess()', () => {
+    it('debe limpiar proceso y processDetails', () => {
+      const patient = createTestPatient();
+      patient.setProcess(PatientProcess.HOSPITALIZATION, 'Some details');
+      
+      patient.clearProcess();
+
+      expect(patient.process).toBe(PatientProcess.NONE);
+      expect(patient.processDetails).toBeUndefined();
+    });
+
+    it('debe actualizar updatedAt al limpiar proceso', () => {
+      const patient = createTestPatient();
+      const originalUpdatedAt = patient.updatedAt;
+
+      patient.clearProcess();
+
+      expect(patient.updatedAt.getTime()).toBeGreaterThanOrEqual(originalUpdatedAt.getTime());
+    });
+  });
+
+  describe('Validation - ID required', () => {
+    it('debe lanzar error si ID está vacío al reconstruir', () => {
+      const props: PatientProps = {
+        id: '',
+        name: 'Test Patient',
+        age: 30,
+        gender: 'male',
+        symptoms: ['test'],
+        vitals: createValidVitals(),
+        priority: PatientPriority.P3,
+        status: PatientStatus.WAITING,
+        arrivalTime: new Date(),
+        comments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      expect(() => Patient.fromPersistence(props)).toThrow('Patient ID is required');
+    });
+
+    it('debe lanzar error si ID tiene solo espacios al reconstruir', () => {
+      const props: PatientProps = {
+        id: '   ',
+        name: 'Test Patient',
+        age: 30,
+        gender: 'male',
+        symptoms: ['test'],
+        vitals: createValidVitals(),
+        priority: PatientPriority.P3,
+        status: PatientStatus.WAITING,
+        arrivalTime: new Date(),
+        comments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      expect(() => Patient.fromPersistence(props)).toThrow('Patient ID is required');
     });
   });
 });

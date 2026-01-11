@@ -7,6 +7,7 @@
  * HUMAN REVIEW: Considerar agregar turnos, horarios, máximo de pacientes
  */
 
+import { randomUUID } from 'crypto';
 import { User, UserProps, UserRole, UserStatus } from './User';
 
 export enum MedicalSpecialty {
@@ -50,7 +51,8 @@ export class Doctor extends User {
    * Factory method para crear doctor
    */
   static createDoctor(params: Omit<DoctorProps, 'id' | 'createdAt' | 'updatedAt' | 'role' | 'currentPatientLoad'>): Doctor {
-    const id = `doctor-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // SECURITY: Using crypto.randomUUID() instead of Math.random()
+    const id = `doctor-${Date.now()}-${randomUUID().substring(0, 8)}`;
     const now = new Date();
 
     const userProps: UserProps = {

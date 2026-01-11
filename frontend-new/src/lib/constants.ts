@@ -1,6 +1,7 @@
 import { TriageLevel } from '@/types';
 
-export const PRIORITY_LABELS: Record<TriageLevel, string> = {
+// HUMAN REVIEW: Mapear valores numéricos (1-5) a etiquetas
+export const PRIORITY_LABELS: Record<1 | 2 | 3 | 4 | 5, string> = {
   [TriageLevel.CRITICAL]: 'Crítico',
   [TriageLevel.HIGH]: 'Alto',
   [TriageLevel.MODERATE]: 'Moderado',
@@ -8,7 +9,8 @@ export const PRIORITY_LABELS: Record<TriageLevel, string> = {
   [TriageLevel.NON_URGENT]: 'No urgente'
 };
 
-export const PRIORITY_COLORS: Record<TriageLevel, {
+// HUMAN REVIEW: Mapear valores numéricos (1-5) a colores
+export const PRIORITY_COLORS: Record<1 | 2 | 3 | 4 | 5, {
   bg: string;
   text: string;
   badge: 'danger' | 'warning' | 'info' | 'success' | 'neutral';
@@ -38,9 +40,14 @@ export const PRIORITY_COLORS: Record<TriageLevel, {
     text: 'text-gray-700 dark:text-gray-400',
     badge: 'neutral'
   }
-};
+} as const;
 
-export const ESI_CRITERIA = {
+// HUMAN REVIEW: Mapear valores numéricos (1-5) a criterios ESI
+export const ESI_CRITERIA: Record<1 | 2 | 3 | 4 | 5, {
+  title: string;
+  description: string;
+  examples: string[];
+}> = {
   [TriageLevel.CRITICAL]: {
     title: 'Nivel 1 - Resucitación',
     description: 'Amenaza vital inmediata que requiere intervención inmediata',
@@ -91,16 +98,17 @@ export const ESI_CRITERIA = {
       'Renovación de recetas'
     ]
   }
-};
+} as const;
 
-export function getPriorityColor(priority: TriageLevel): string {
+// HUMAN REVIEW: Cambiar tipos para aceptar valores numéricos 1-5
+export function getPriorityColor(priority: 1 | 2 | 3 | 4 | 5): string {
   return PRIORITY_COLORS[priority].bg;
 }
 
-export function getPriorityTextColor(priority: TriageLevel): string {
+export function getPriorityTextColor(priority: 1 | 2 | 3 | 4 | 5): string {
   return PRIORITY_COLORS[priority].text;
 }
 
-export function getPriorityBadgeVariant(priority: TriageLevel) {
+export function getPriorityBadgeVariant(priority: 1 | 2 | 3 | 4 | 5): 'danger' | 'warning' | 'info' | 'success' | 'neutral' {
   return PRIORITY_COLORS[priority].badge;
 }

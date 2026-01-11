@@ -1,35 +1,14 @@
-// User and Authentication Types
+// Type definitions for the HealthTech application
+// HUMAN REVIEW: Types must match backend entities exactly
+
+// HUMAN REVIEW: Convertir UserRole a enum para poder usarlo como valor en tiempo de ejecución
 export enum UserRole {
-  NURSE = 'nurse',
+  ADMIN = 'admin',
   DOCTOR = 'doctor',
-  ADMIN = 'admin'
+  NURSE = 'nurse'
 }
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  department?: string;
-  specialization?: string;
-  specialty?: string; // Backend devuelve 'specialty' para doctores
-  area?: string; // Backend devuelve 'area' para enfermeras
-  phone?: string;
-  avatar?: string;
-}
-
-export interface LoginCredentials {
-  email: string;
-  role: UserRole;
-  password?: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
-}
-
-// Patient Types
+// HUMAN REVIEW: Convertir TriageLevel a enum para poder usarlo como valor y como tipo
 export enum TriageLevel {
   CRITICAL = 1,
   HIGH = 2,
@@ -38,9 +17,24 @@ export enum TriageLevel {
   NON_URGENT = 5
 }
 
+// HUMAN REVIEW: Mantener alias de tipo para compatibilidad
+export type TriageLevelValue = 1 | 2 | 3 | 4 | 5;
+
+export enum TriagePriority {
+  CRITICAL = 1,
+  EMERGENCY = 2,
+  URGENT = 3,
+  SEMI_URGENT = 4,
+  NON_URGENT = 5
+}
+
 export enum PatientStatus {
   WAITING = 'WAITING',
   IN_PROGRESS = 'IN_PROGRESS',
+  UNDER_TREATMENT = 'UNDER_TREATMENT',
+  STABILIZED = 'STABILIZED',
+  DISCHARGED = 'DISCHARGED',
+  TRANSFERRED = 'TRANSFERRED',
   COMPLETED = 'COMPLETED'
 }
 
@@ -64,8 +58,10 @@ export interface Patient {
   emergencyPhone?: string;
   symptoms: string;
   vitalSigns: VitalSigns;
-  priority: TriageLevel;
+  priority: TriageLevelValue; // HUMAN REVIEW: Prioridad como valor numérico 1-5, no como enum
   status: PatientStatus;
+  process?: 'none' | 'discharge' | 'hospitalization' | 'hospitalization_days' | 'icu' | 'referral'; // HUMAN REVIEW: Proceso/disposición del paciente
+  processDetails?: string; // Detalles adicionales del proceso (ej: días de hospitalización, clínica de remisión)
   doctorId?: string;
   doctorName?: string;
   nurseId?: string;
@@ -98,7 +94,7 @@ export interface CreatePatientRequest {
   emergencyPhone?: string;
   symptoms: string;
   vitalSigns: VitalSigns;
-  priority: TriageLevel;
+  priority: TriageLevelValue; // HUMAN REVIEW: Prioridad como valor numérico 1-5
 }
 
 export interface CreateUserRequest {
@@ -112,32 +108,40 @@ export interface CreateUserRequest {
 
 export interface AddCommentRequest {
   patientId: string;
+  doctorId: string;
   content: string;
-  doctorId: string;
 }
 
-export interface AssignDoctorRequest {
-  patientId: string;
-  doctorId: string;
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  department?: string;
+  specialization?: string;
+  specialty?: string; // HUMAN REVIEW: Agregar specialty (alias de specialization)
+  area?: string; // HUMAN REVIEW: Agregar área para enfermeras
+  phone?: string; // HUMAN REVIEW: Agregar teléfono para usuarios
+  avatar?: string; // HUMAN REVIEW: Agregar avatar (opcional)
 }
 
-// WebSocket Event Types
 export interface TriageEvent {
-  type: 'critical-patient' | 'patient-updated' | 'patient-discharged';
-  patient: Patient;
+  type: 'patient_registered' | 'patient_updated' | 'priority_changed';
+  patientId: string;
+  patientName: string;
+  priority: TriageLevelValue;
   timestamp: string;
+  symptoms?: string[];
+  patient?: Patient; // HUMAN REVIEW: Agregar patient completo para compatibilidad
 }
 
-// Statistics Types
-export interface DashboardStats {
-  totalPatients: number;
-  criticalPatients: number;
-  averageWaitTime: number;
-  patientsToday: number;
+// HUMAN REVIEW: Agregar tipos faltantes para autenticación
+export interface LoginCredentials {
+  email: string;
+  password: string;
 }
 
-export interface PriorityDistribution {
-  priority: TriageLevel;
-  count: number;
-  percentage: number;
+export interface AuthResponse {
+  token: string;
+  user: User;
 }

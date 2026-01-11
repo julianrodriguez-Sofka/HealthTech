@@ -7,6 +7,7 @@
  * HUMAN REVIEW: Validar rangos de signos vitales según estándares médicos
  */
 
+import { randomUUID } from 'crypto';
 import { PatientComment } from './PatientComment';
 
 export enum PatientPriority {
@@ -24,6 +25,19 @@ export enum PatientStatus {
   STABILIZED = 'stabilized',
   DISCHARGED = 'discharged',
   TRANSFERRED = 'transferred',
+}
+
+/**
+ * Patient Disposition/Process - Proceso asignado al paciente
+ * HUMAN REVIEW: Representa la decisión médica sobre el destino del paciente
+ */
+export enum PatientProcess {
+  NONE = 'none', // Sin proceso asignado aún
+  DISCHARGE = 'discharge', // Dar de alta
+  HOSPITALIZATION = 'hospitalization', // Hospitalización general
+  HOSPITALIZATION_DAYS = 'hospitalization_days', // Hospitalización por X días
+  ICU = 'icu', // Hospitalización UCI
+  REFERRAL = 'referral', // Remitir a otra clínica
 }
 
 export interface VitalSigns {
@@ -46,6 +60,8 @@ export interface PatientProps {
   priority: PatientPriority;
   manualPriority?: PatientPriority; // Override automático
   status: PatientStatus;
+  process?: PatientProcess; // Proceso/disposición asignada al paciente (HUMAN REVIEW: Nueva funcionalidad)
+  processDetails?: string; // Detalles adicionales del proceso (ej: días de hospitalización, clínica de remisión)
   assignedDoctorId?: string;
   assignedDoctorName?: string;
   assignedNurseId?: string;
@@ -73,7 +89,8 @@ export class Patient {
    * Factory method para crear paciente
    */
   static create(params: Omit<PatientProps, 'id' | 'status' | 'comments' | 'createdAt' | 'updatedAt'>): Patient {
-    const id = `patient-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    // SECURITY: Using crypto.randomUUID() instead of Math.random()
+    const id = `patient-${Date.now()}-${randomUUID().substring(0, 8)}`;
     const now = new Date();
 
     return new Patient({
@@ -213,6 +230,14 @@ export class Patient {
     return this.props.updatedAt;
   }
 
+  get process(): PatientProcess | undefined {
+    return this.props.process;
+  }
+
+  get processDetails(): string | undefined {
+    return this.props.processDetails;
+  }
+
   /**
    * Business methods
    */
@@ -326,6 +351,43 @@ export class Patient {
       ...newVitals,
     };
     this.validateVitalSigns();
+    this.props.updatedAt = new Date();
+  }
+
+  /**
+   * Set patient process/disposition
+   * HUMAN REVIEW: Nueva funcionalidad para asignar proceso al paciente
+   * Permite: dar de alta, hospitalizar, remitir, UCI, etc.
+   */
+  setProcess(process: PatientProcess, details?: string): void {
+    if (!Object.values(PatientProcess).includes(process)) {
+      throw new Error(`Invalid process: ${process}`);
+    }
+
+    this.props.process = process;
+    this.props.processDetails = details;
+    this.props.updatedAt = new Date();
+
+    // Auto-update status based on process
+    if (process === PatientProcess.DISCHARGE) {
+      this.props.status = PatientStatus.DISCHARGED;
+      if (!this.props.dischargeTime) {
+        this.props.dischargeTime = new Date();
+      }
+    } else if (process === PatientProcess.ICU || process === PatientProcess.HOSPITALIZATION || process === PatientProcess.HOSPITALIZATION_DAYS) {
+      this.props.status = PatientStatus.UNDER_TREATMENT;
+    } else if (process === PatientProcess.REFERRAL) {
+      this.props.status = PatientStatus.TRANSFERRED;
+    }
+  }
+
+  /**
+   * Clear patient process
+   * HUMAN REVIEW: Limpiar proceso del paciente (volver a 'none')
+   */
+  clearProcess(): void {
+    this.props.process = PatientProcess.NONE;
+    this.props.processDetails = undefined;
     this.props.updatedAt = new Date();
   }
 

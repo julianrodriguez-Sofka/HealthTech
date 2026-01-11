@@ -117,8 +117,10 @@ export class AuthService {
         };
       }
 
-      // Validate email format
-      if (!this.isValidEmail(dto.email)) {
+      // SECURITY: Validar formato de email (usando regex centralizado para evitar duplicación)
+      // HUMAN REVIEW: Mantener validación simple aquí ya que AuthService usa LoginResult, no Result Pattern
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(dto.email)) {
         return {
           success: false,
           error: 'Invalid email format',
@@ -350,12 +352,4 @@ export class AuthService {
     return jwt.sign(payload, this.jwtSecret, { expiresIn } as jwt.SignOptions);
   }
 
-  /**
-   * Validate email format
-   * @private
-   */
-  private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
 }

@@ -1,7 +1,27 @@
 import { io, Socket } from 'socket.io-client';
 import { TriageEvent } from '@/types';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+/**
+ * HUMAN REVIEW: Detección automática de URL de WebSocket
+ * - En producción (Nginx): usa ruta relativa (Nginx hace proxy a /socket.io/)
+ * - En desarrollo: usa VITE_SOCKET_URL o localhost:3000
+ */
+const getSocketUrl = (): string => {
+  // Si está definida la variable de entorno, usarla
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL;
+  }
+  
+  // En producción (Nginx), usar ruta relativa (mismo dominio)
+  if (import.meta.env.PROD) {
+    return window.location.origin;
+  }
+  
+  // Desarrollo local
+  return 'http://localhost:3000';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 class WebSocketService {
   private socket: Socket | null = null;

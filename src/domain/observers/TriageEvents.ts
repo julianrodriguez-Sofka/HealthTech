@@ -9,6 +9,7 @@
  * necesaria para que los observadores puedan reaccionar apropiadamente.
  */
 
+import { randomUUID } from 'crypto';
 import { PatientPriority, PatientStatus } from '@domain/entities/Patient';
 
 /**
@@ -153,7 +154,7 @@ export function createPatientRegisteredEvent(
   registeredBy: string
 ): PatientRegisteredEvent {
   return {
-    eventId: `evt-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    eventId: `evt-${Date.now()}-${randomUUID().substring(0, 8)}`,
     occurredAt: new Date(),
     eventType: 'PATIENT_REGISTERED',
     patientId,
@@ -173,7 +174,7 @@ export function createPatientPriorityChangedEvent(
   changedBy: string
 ): PatientPriorityChangedEvent {
   return {
-    eventId: `evt-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    eventId: `evt-${Date.now()}-${randomUUID().substring(0, 8)}`,
     occurredAt: new Date(),
     eventType: 'PATIENT_PRIORITY_CHANGED',
     patientId,
@@ -193,7 +194,7 @@ export function createCaseAssignedEvent(
   previousStatus: PatientStatus
 ): CaseAssignedEvent {
   return {
-    eventId: `evt-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    eventId: `evt-${Date.now()}-${randomUUID().substring(0, 8)}`,
     occurredAt: new Date(),
     eventType: 'CASE_ASSIGNED',
     patientId,
@@ -215,7 +216,7 @@ export function createCriticalVitalsDetectedEvent(
   assignedDoctorId?: string
 ): CriticalVitalsDetectedEvent {
   return {
-    eventId: `evt-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+    eventId: `evt-${Date.now()}-${randomUUID().substring(0, 8)}`,
     occurredAt: new Date(),
     eventType: 'CRITICAL_VITALS_DETECTED',
     patientId,

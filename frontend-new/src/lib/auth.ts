@@ -18,14 +18,25 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
 
     const { accessToken, user: userData } = response.data;
     
+    // HUMAN REVIEW: Mapear rol del backend (string) a enum UserRole
+    let userRole: UserRole;
+    const roleStr = (userData.role || '').toLowerCase();
+    if (roleStr === 'admin') userRole = UserRole.ADMIN;
+    else if (roleStr === 'doctor') userRole = UserRole.DOCTOR;
+    else if (roleStr === 'nurse') userRole = UserRole.NURSE;
+    else userRole = UserRole.ADMIN; // fallback
+    
     // Map backend user to frontend User type
     const user: User = {
       id: userData.id,
       name: userData.name,
       email: userData.email,
-      role: userData.role as UserRole,
+      role: userRole,
       department: (userData as any).department,
       specialization: (userData as any).specialization,
+      specialty: (userData as any).specialty,
+      area: (userData as any).area,
+      phone: (userData as any).phone,
       avatar: `https://i.pravatar.cc/150?u=${userData.email}`
     };
     

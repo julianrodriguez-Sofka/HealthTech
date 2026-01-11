@@ -40,7 +40,8 @@ export const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({ onSu
     mode: 'onChange'
   });
 
-  const selectedRole = watch('role');
+  // HUMAN REVIEW: Asegurar tipo UserRole para selectedRole
+  const selectedRole = watch('role') as UserRole | undefined;
 
   const handleNext = async () => {
     let fieldsToValidate: (keyof UserFormData)[] = [];
@@ -212,7 +213,7 @@ export const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({ onSu
               {...register('role')}
             />
 
-            {selectedRole === UserRole.NURSE && (
+            {selectedRole === UserRole.NURSE && selectedRole !== undefined && (
               <Select
                 label="Departamento"
                 error={errors.department?.message}
@@ -229,7 +230,7 @@ export const UserRegistrationForm: React.FC<UserRegistrationFormProps> = ({ onSu
               />
             )}
 
-            {selectedRole === UserRole.DOCTOR && (
+            {selectedRole === UserRole.DOCTOR && selectedRole !== undefined && (
               <Select
                 label="Especialización"
                 error={errors.specialization?.message}

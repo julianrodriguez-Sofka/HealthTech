@@ -36,8 +36,13 @@ export class InMemoryUserRepository implements IUserRepository {
   }
 
   async findByEmail(email: string): Promise<User | null> {
+    // HUMAN REVIEW: Normalizar email a lowercase para búsqueda case-insensitive
+    // Esto asegura que el email se busque de la misma forma que se guarda
+    const normalizedEmail = email.toLowerCase().trim();
+
     for (const user of this.users.values()) {
-      if (user.email === email) {
+      // Comparar emails normalizados (case-insensitive)
+      if (user.email.toLowerCase().trim() === normalizedEmail) {
         // Attach passwordHash for authentication
         (user as User & { passwordHash?: string }).passwordHash = this.passwordHashes.get(user.id);
         return user;

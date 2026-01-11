@@ -1,6 +1,26 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+/**
+ * HUMAN REVIEW: Detección automática de URL de API
+ * - En producción (Nginx): usa ruta relativa /api/v1 (Nginx hace proxy)
+ * - En desarrollo: usa VITE_API_URL o localhost:3000
+ */
+const getApiUrl = (): string => {
+  // Si está definida la variable de entorno, usarla
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // En producción (Nginx), usar ruta relativa
+  if (import.meta.env.PROD) {
+    return '/api/v1';
+  }
+  
+  // Desarrollo local
+  return 'http://localhost:3000/api/v1';
+};
+
+const API_URL = getApiUrl();
 
 class ApiClient {
   private instance: AxiosInstance;

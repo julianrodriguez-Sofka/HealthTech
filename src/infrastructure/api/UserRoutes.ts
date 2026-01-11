@@ -19,6 +19,7 @@ import { UserRole, UserStatus } from '../../domain/entities/User';
 import { MedicalSpecialty } from '../../domain/entities/Doctor';
 import { NurseArea } from '../../domain/entities/Nurse';
 import { CreateUserBody, UpdateUserProfileBody } from './request-types';
+import { getJwtSecret } from '../../shared/config';
 
 export class UserRoutes {
   private router: Router;
@@ -29,8 +30,8 @@ export class UserRoutes {
     private readonly doctorRepository: IDoctorRepository
   ) {
     this.router = Router();
-    // Initialize AuthService with userRepository and JWT secret
-    const jwtSecret = process.env.JWT_SECRET || 'healthtech-dev-secret-key-2026';
+    // SECURITY: Usar helper centralizado para obtener JWT_SECRET de forma segura
+    const jwtSecret = getJwtSecret();
     this.authService = new AuthService(userRepository, jwtSecret);
     this.configureRoutes();
   }
@@ -73,6 +74,10 @@ export class UserRoutes {
         area,
         shift
       } = req.body;
+
+      // HUMAN REVIEW: Normalizar email a lowercase para consistencia
+      // El CreateUserUseCase también normaliza, pero es mejor hacerlo aquí también para evitar problemas
+      const normalizedEmail = email ? email.toLowerCase().trim() : email;
 
       // Validación básica
       if (!email || !name || !role) {
@@ -123,7 +128,7 @@ export class UserRoutes {
       );
 
       const result = await createUserUseCase.execute({
-        email,
+        email: normalizedEmail, // HUMAN REVIEW: Usar email normalizado
         name,
         password: req.body.password || 'HealthTech2026!', // Default password if not provided
         role: role as UserRole,
@@ -256,15 +261,27 @@ export class UserRoutes {
         return;
       }
 
-      // Actualizar campos si se proporcionan
-      if (name && name !== user.name) {
-        // HUMAN REVIEW: Validar formato de nombre
-        Object.assign(user, { name });
+      // HUMAN REVIEW: Actualizar campos usando métodos de la entidad (encapsulación)
+      // Esto respeta los principios de DDD y evita modificar propiedades readonly directamente
+
+      if (name && name.trim() !== user.name) {
+        try {
+          user.updateName(name);
+        } catch (error) {
+          res.status(400).json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Invalid name format'
+          });
+          return;
+        }
       }
 
-      if (email && email !== user.email) {
+      if (email && email.trim() !== user.email) {
+        // Normalizar email antes de verificar
+        const normalizedEmail = email.toLowerCase().trim();
+
         // Verificar que el email no esté en uso por otro usuario
-        const existingUser = await this.userRepository.findByEmail(email);
+        const existingUser = await this.userRepository.findByEmail(normalizedEmail);
         if (existingUser && existingUser.id !== id) {
           res.status(409).json({
             success: false,
@@ -272,13 +289,33 @@ export class UserRoutes {
           });
           return;
         }
-        Object.assign(user, { email });
+
+        try {
+          user.updateEmail(normalizedEmail);
+        } catch (error) {
+          res.status(400).json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Invalid email format'
+          });
+          return;
+        }
       }
 
-      if (password) {
-        // HUMAN REVIEW: Aquí debería hashearse la contraseña
-        // Por ahora se guarda tal cual (NO RECOMENDADO EN PRODUCCIÓN)
-        Object.assign(user, { password });
+      if (password && password.trim() !== '') {
+        // HUMAN REVIEW: Hashear la contraseña antes de guardarla (seguridad)
+        try {
+          const passwordHash = await this.authService.hashPassword(password);
+          // Guardar hash de contraseña usando el método del repositorio
+          if ('savePasswordHash' in this.userRepository && typeof this.userRepository.savePasswordHash === 'function') {
+            await this.userRepository.savePasswordHash(user.id, passwordHash);
+          }
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            error: 'Error al hashear la contraseña'
+          });
+          return;
+        }
       }
 
       await this.userRepository.save(user);
