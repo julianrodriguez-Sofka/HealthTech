@@ -105,10 +105,10 @@ class ExpressServer {
     this.app.use((req: Request, _res: Response, next: NextFunction) => {
       const requestOrigin = req.headers.origin;
       // Only allow origins from the allowlist, not user-controlled data
-      const corsOrigin = requestOrigin && allowedOrigins.includes(requestOrigin) 
-        ? requestOrigin 
+      const corsOrigin = requestOrigin && allowedOrigins.includes(requestOrigin)
+        ? requestOrigin
         : allowedOrigins[0];
-      
+
       _res.setHeader('Access-Control-Allow-Origin', corsOrigin);
       _res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       _res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Timestamp, X-Requested-With');
