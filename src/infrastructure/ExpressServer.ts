@@ -109,7 +109,7 @@ class ExpressServer {
         ? requestOrigin
         : allowedOrigins[0];
 
-      _res.setHeader('Access-Control-Allow-Origin', corsOrigin);
+      _res.setHeader('Access-Control-Allow-Origin', 'corsOrigin');
       _res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
       _res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Request-Timestamp, X-Requested-With');
       _res.setHeader('Access-Control-Allow-Credentials', 'true');
